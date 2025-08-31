@@ -1,0 +1,25 @@
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="logo">
+      <h1>VideoChatSystem</h1>
+    </div>
+
+    <h2>Create Account</h2>
+    <p class="subtitle">Sign up to start chatting and video calling</p>
+
+    <form (ngSubmit)="onSubmit()" #registerForm="ngForm">
+      <input type="text" placeholder="Username" name="username" [(ngModel)]="registerData.username" required>
+      <input type="email" placeholder="Email" name="email" [(ngModel)]="registerData.email" required>
+      <input type="password" placeholder="Password" name="password" [(ngModel)]="registerData.password" required>
+      <input type="password" placeholder="Confirm Password" name="confirmPassword" [(ngModel)]="registerData.confirmPassword" required>
+      <button type="submit">Register</button>
+    </form>
+
+    <p class="signup-text">
+      Already have an account?
+      <a [routerLink]="['/login']" class="link-button">Login</a>
+    </p>
+
+    <p class="error-message" *ngIf="errorMessage">{{ errorMessage }}</p>
+  </div>
+</div>

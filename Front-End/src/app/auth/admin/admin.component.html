@@ -1,0 +1,133 @@
+<div class="admin-container">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <ul>
+      <li *ngFor="let page of pages"
+          [class.active]="currentPage === page"
+          (click)="selectPage(page)">
+        {{ page }}
+      </li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Top bar -->
+    <div class="top-bar">
+      <h1>{{ currentPage }} Page</h1>
+      <button class="sign-out" (click)="signOut()">Sign Out</button>
+    </div>
+
+    <!-- Notifications -->
+    <div class="notifications">
+      <div class="success" *ngIf="successMessage">{{ successMessage }}</div>
+      <div class="error" *ngIf="errorMessage">{{ errorMessage }}</div>
+    </div>
+
+    <!-- USERS PAGE -->
+    <div *ngIf="currentPage === 'Users'" class="users-page">
+      <div class="add-user-form">
+        <input placeholder="Username" [(ngModel)]="newUser.username" />
+        <input placeholder="Email" [(ngModel)]="newUser.email" />
+        <input type="password" placeholder="Password" [(ngModel)]="newUser.password" />
+        <select [(ngModel)]="newUser.role">
+          <option value="chat_user">Chat User</option>
+          <option value="group_admin">Group Admin</option>
+          <option value="super_admin">Super Admin</option>
+        </select>
+        <button (click)="addUser()">Add User</button>
+      </div>
+
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Roles</th>
+            <th>Groups</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of users" (click)="selectUser(user)" [class.selected]="selectedUser === user">
+            <td>{{ user.username }}</td>
+            <td>{{ user.email }}</td>
+            <td>
+              <span class="role-badge" *ngFor="let r of user.roles">
+                {{ r }}
+              </span>
+              <select [(ngModel)]="selectedRole[user.id]">
+                <option value="" disabled selected>Remove role...</option>
+                <option *ngFor="let r of user.roles" [value]="r">{{ r }}</option>
+              </select>
+              <button *ngIf="selectedRole[user.id]" (click)="downgradeUserRole(user, selectedRole[user.id])">Remove</button>
+            </td>
+            <td>
+              <span class="group-badge" *ngFor="let g of user.groups">{{ g }}</span>
+            </td>
+            <td class="actions">
+              <button (click)="promoteUser(user, 'group_admin'); $event.stopPropagation()">Promote</button>
+              <button (click)="removeUser(user); $event.stopPropagation()">Remove</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- GROUPS PAGE -->
+    <div *ngIf="currentPage === 'Groups'" class="groups-page">
+      <div class="add-group">
+        <input placeholder="Group Name" [(ngModel)]="newGroup.name" />
+        <button (click)="addGroup()">Add Group</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Members</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let group of groups" (click)="selectGroup(group)" [class.selected]="selectedGroup === group">
+            <td>{{ group.name }}</td>
+            <td>{{ getUsernames(group.members) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SETTINGS PAGE -->
+    <div *ngIf="currentPage === 'Settings'" class="settings-page">
+      <h2>Website Settings</h2>
+
+      <div class="settings-item">
+        <label>Theme:</label>
+        <button (click)="toggleTheme()">{{ settings.theme === 'light' ? 'Switch to Dark' : 'Switch to Light' }}</button>
+      </div>
+
+      <div class="settings-item">
+        <label>Email Notifications:</label>
+        <button (click)="toggleEmailNotifications()">
+          {{ settings.emailNotifications ? 'Disable' : 'Enable' }}
+        </button>
+      </div>
+
+      <div class="settings-item">
+        <label>Default Role for New Users:</label>
+        <select [(ngModel)]="settings.defaultUserRole" (change)="changeDefaultRole(settings.defaultUserRole)">
+          <option value="chat_user">Chat User</option>
+          <option value="group_admin">Group Admin</option>
+          <option value="super_admin">Super Admin</option>
+        </select>
+      </div>
+
+      <div class="settings-item">
+        <label>Account Management:</label>
+        <button (click)="showSuccess('Admin account settings would open here')">Manage Admin Account</button>
+      </div>
+    </div>
+
+
+  </main>
+</div>

@@ -1,0 +1,23 @@
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="logo">
+      <h1>VideoChatSystem</h1>
+    </div>
+
+    <h2>Welcome Back</h2>
+    <p class="subtitle">Log in to access your chats and video calls</p>
+
+    <form (ngSubmit)="onSubmit()" #loginForm="ngForm">
+      <input type="email" placeholder="Email" name="email" [(ngModel)]="loginData.email" required>
+      <input type="password" placeholder="Password" name="password" [(ngModel)]="loginData.password" required>
+      <button type="submit">Login</button>
+    </form>
+
+    <p class="error-message" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+    <p class="signup-text">
+      Don't have an account?
+      <a [routerLink]="['/register']" class="link-button">Register</a>
+    </p>
+  </div>
+</div>
