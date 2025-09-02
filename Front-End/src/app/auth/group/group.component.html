@@ -1,0 +1,67 @@
+<div class="group-admin-chat-app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="user-info">
+      <h3>{{ username || 'Guest' }}</h3>
+      <button (click)="logout()">Sign Out</button>
+    </div>
+
+    <!-- Groups Section -->
+    <div class="groups">
+      <h4>Groups</h4>
+      <ul>
+        <li *ngFor="let group of groups"
+            [class.active]="currentGroup === group"
+            (click)="selectGroup(group)">
+          {{ group.name }}
+          <button class="danger" *ngIf="isAdminOfGroup(group)" (click)="deleteGroup(group); $event.stopPropagation()">Delete</button>
+        </li>
+      </ul>
+      <!-- Add Group -->
+      <div *ngIf="isGroupAdmin">
+        <input #newGroupName type="text" placeholder="New group name" />
+        <button (click)="addGroup(newGroupName.value); newGroupName.value=''">Add Group</button>
+      </div>
+    </div>
+
+    <!-- Channels Section -->
+    <div class="channels" *ngIf="currentGroup">
+      <h4>Channels</h4>
+      <ul>
+        <li *ngFor="let ch of currentGroup.channels"
+            [class.active]="currentChannel === ch"
+            (click)="selectChannel(ch)">
+          {{ ch }}
+          <button class="danger" *ngIf="isAdminOfGroup(currentGroup)" (click)="deleteChannel(currentGroup, ch)">Delete</button>
+        </li>
+      </ul>
+      <!-- Add Channel -->
+      <div *ngIf="isAdminOfGroup(currentGroup)">
+        <input #newChannelName type="text" placeholder="New channel name" />
+        <button (click)="addChannel(currentGroup, newChannelName.value); newChannelName.value=''">Add Channel</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Chat Area -->
+  <main class="chat-area" *ngIf="currentGroup && currentChannel">
+    <div class="chat-header">
+      <h2>{{ currentGroup.name }} - {{ currentChannel }}</h2>
+      <button class="video-btn">Start Call</button>
+    </div>
+
+    <div class="messages">
+      <div *ngFor="let msg of messages[currentGroup.id][currentChannel]" class="message">
+        <span class="sender">{{ msg.sender }}:</span>
+        <span class="text">{{ msg.text }}</span>
+        <span class="time">{{ msg.timestamp | date:'shortTime' }}</span>
+      </div>
+    </div>
+
+    <div class="message-input">
+      <input type="text" placeholder="Type a message..." [(ngModel)]="newMessage" (keyup.enter)="sendMessage()" />
+      <button (click)="sendMessage()">Send</button>
+    </div>
+  </main>
+</div>

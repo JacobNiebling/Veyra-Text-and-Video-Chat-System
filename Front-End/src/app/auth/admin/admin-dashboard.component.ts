@@ -9,6 +9,7 @@ interface User {
   email: string;
   roles: string[];
   groups: string[];
+  online?: boolean;
 }
 
 interface Group {
@@ -20,7 +21,7 @@ interface Group {
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [FormsModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './admin.component.html',
   styleUrls: ['./admin.component.scss']
 })
@@ -48,6 +49,20 @@ export class AdminDashboardComponent {
   successMessage = '';
 
   selectedRole: { [key: string]: string } = {}; // For role dropdowns
+
+  feedPosts = [
+    { user: 'Alice', message: 'Just joined the team!' },
+    { user: 'Bob', message: 'Meeting starts in 5 minutes.' },
+    { user: 'Charlie', message: 'Uploaded new assets.' },
+  ];
+
+    // ADD MIC/CAM state for top bar buttons
+    isMicOn = true;
+    isCamOn = true;
+
+    toggleMic() { this.isMicOn = !this.isMicOn; }
+    toggleCamera() { this.isCamOn = !this.isCamOn; }
+
 
   // SETTINGS VARIABLES
   settings = {
@@ -125,35 +140,40 @@ export class AdminDashboardComponent {
   }
 
   // SETTINGS METHODS
+  // Toggle between light/dark theme
   toggleTheme() {
     this.settings.theme = this.settings.theme === 'light' ? 'dark' : 'light';
     this.showSuccess(`Theme changed to ${this.settings.theme}`);
   }
 
+  // Enable/disable email notifications
   toggleEmailNotifications() {
     this.settings.emailNotifications = !this.settings.emailNotifications;
     this.showSuccess(`Email notifications ${this.settings.emailNotifications ? 'enabled' : 'disabled'}`);
   }
 
+  // Change default role for new users
   changeDefaultRole(role: string) {
     this.settings.defaultUserRole = role;
-    this.showSuccess(`Default new user role set to ${role.replace('_',' ')}`);
+    this.showSuccess(`Default role for new users set to ${role.replace('_', ' ')}`);
   }
+
+  // Simple success/error messages
+  showSuccess(msg: string) {
+    this.successMessage = msg;
+    setTimeout(() => this.successMessage = '', 3000);
+  }
+
+  showError(msg: string) {
+    this.errorMessage = msg;
+    setTimeout(() => this.errorMessage = '', 3000);
+  }
+
 
   // UTILITIES
   getUsernames(users: User[] | undefined): string {
     if(!users || users.length === 0) return 'None';
     return users.map(u => u.username).join(', ');
-  }
-
-  showSuccess(msg: string) {
-    this.successMessage = msg;
-    setTimeout(() => this.successMessage='', 3000);
-  }
-
-  showError(msg: string) {
-    this.errorMessage = msg;
-    setTimeout(() => this.errorMessage='', 3000);
   }
 
   constructor(private router: Router) {}
@@ -163,6 +183,5 @@ export class AdminDashboardComponent {
 
     // Redirect to login page
     this.router.navigate(['/login']);
-  }
-
+    }
 }

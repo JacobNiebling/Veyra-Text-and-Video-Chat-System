@@ -4,8 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { AdminDashboardComponent } from './admin-dashboard.component';
 
 @NgModule({
-  declarations: [AdminDashboardComponent],
-  imports: [CommonModule, FormsModule],
-  exports: [AdminDashboardComponent]
+  imports: [
+    CommonModule,
+    FormsModule,
+    AdminDashboardComponent
+  ],
+  exports: [
+    AdminDashboardComponent
+  ]
 })
-export class AdminModule { }
+export class AdminModule {}

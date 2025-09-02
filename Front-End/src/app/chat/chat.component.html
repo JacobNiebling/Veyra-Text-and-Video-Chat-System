@@ -1,0 +1,64 @@
+<div class="chat-app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="user-info">
+      <img class="avatar" src="assets/avatar.png" alt="Avatar" />
+      <h3>{{ username || 'Guest' }}</h3>
+      <button (click)="logout()">Sign Out</button>
+    </div>
+
+    <!-- Groups -->
+    <div class="groups">
+      <h4>Groups</h4>
+      <ul>
+        <li *ngFor="let group of groups"
+            [class.active]="currentGroup === group"
+            (click)="selectGroup(group)">
+          {{ group }}
+        </li>
+      </ul>
+    </div>
+
+    <!-- Channels -->
+    <div class="channels" *ngIf="currentGroup">
+      <h4>Channels</h4>
+      <ul>
+        <li *ngFor="let ch of channels[currentGroup]"
+            [class.active]="currentChannel === ch"
+            (click)="selectChannel(ch)">
+          # {{ ch }}
+        </li>
+      </ul>
+    </div>
+  </aside>
+
+  <!-- Main Chat Area -->
+  <main class="chat-area" *ngIf="currentGroup && currentChannel">
+    <div class="chat-header">
+      <h2>{{ currentGroup }} - #{{ currentChannel }}</h2>
+    </div>
+
+    <div class="messages">
+      <div *ngFor="let msg of messages" class="message">
+        <img class="avatar" src="assets/avatar.png" alt="Avatar" />
+        <div class="message-content">
+          <span class="sender">{{ msg.sender }}</span>
+          <span class="text">{{ msg.text }}</span>
+          <span class="time">{{ msg.timestamp | date:'shortTime' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="message-input">
+      <input type="text" placeholder="Type a message..." [(ngModel)]="newMessage" (keyup.enter)="sendMessage()"/>
+      <button (click)="sendMessage()">Send</button>
+    </div>
+  </main>
+
+  <!-- Login Overlay -->
+  <div class="login-overlay" *ngIf="!username">
+    <input placeholder="Enter your username" [(ngModel)]="loginInput"/>
+    <button (click)="login()">Login</button>
+  </div>
+</div>
