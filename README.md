@@ -112,7 +112,7 @@ This represents the collection of users and channels associated with the user
 - PORT - Server port
 
 **Server.js**
-- Sets up Express, SOckets.io, connects to MongoDB, defines middleware, starts server (MongoDB, not added till Phase 2)
+- Sets up Express, Sockets.io, connects to MongoDB, defines middleware, starts server (MongoDB, not added till Phase 2)
 
 ## Server-Side Routes
 
@@ -178,3 +178,31 @@ The server handles **user login**, **group management**, and **roles**. There ar
 
 **Super Admin:** 
 - Full control over all users and groups  
+
+## Client Server Interaction
+The client communicates with the server using **HTTP requests** for all actions such as login, viewing groups, and managing roles. The server responds with JSON data, which the Angular components use to update the UI dynamically.
+
+## Login
+- When a user enters their email and password in the **LoginComponent**, the client sends a `POST /auth/login` request to the server.  
+- If the credentials are valid, the server returns a JWT token and user info.  
+- The client stores the token and updates the UI to show the **DashboardComponent**, displaying the user’s groups.
+
+## Viewing Groups
+- The **DashboardComponent** requests the user’s groups with `GET /groups`.  
+- The server returns a list of groups the user belongs to.  
+- The component displays each group in a list. Any changes, like joining or leaving a group, trigger a refresh of this list.
+
+## Creating a Group
+- In **DashboardComponent**, when a Group Admin or Super Admin submits a new group name, the client sends `POST /groups` to the server.  
+- The server creates the group in the database and returns the group details.  
+- The component adds the new group to the displayed list without needing a full page reload.
+
+## Joining or Leaving a Group
+- When a user joins a group (`POST /groups/:groupId/join`) or leaves (`POST /groups/:groupId/leave`), the server updates the group membership in the database.  
+- The client automatically updates the group list in **DashboardComponent** to reflect the change.
+
+## Managing User Roles
+- In the **UserManagementComponent**, when a Super Admin changes a user’s role via `POST /users/:id/role`, the server updates the role in the database.  
+- The component then refreshes the displayed list of users and their roles to reflect the update immediately.
+
+In all cases, the client ensures that the **data displayed in the Angular components always reflects the current server state**, providing a responsive and up-to-date user interface.
