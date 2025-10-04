@@ -9,6 +9,7 @@
         {{ page }}
       </li>
     </ul>
+        <button class="sign-out" (click)="signOut()">Log out</button>
   </aside>
 
   <!-- Main Content -->
@@ -16,9 +17,6 @@
     <!-- Top bar -->
     <div class="top-bar">
       <h1>{{ currentPage }}</h1>
-      <div class="top-bar-actions">
-        <button class="sign-out" (click)="signOut()">Logout</button>
-      </div>
     </div>
 
     <!-- Notifications -->
