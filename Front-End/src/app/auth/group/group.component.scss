@@ -228,4 +228,18 @@
       transition: 0.2s;
       &:hover { background-color: #303f9f; }
     }
+
+    .delete-btn {
+      margin-left: 10px;
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      padding: 2px 8px;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+
+    .delete-btn:hover {
+      background-color: #c0392b;
+    }
   }

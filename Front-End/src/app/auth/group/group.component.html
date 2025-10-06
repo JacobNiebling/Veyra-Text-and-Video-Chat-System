@@ -9,16 +9,15 @@
     <!-- Groups Section -->
     <div class="groups">
       <h4>Groups</h4>
-      <ul>
-        <li *ngFor="let group of groups"
-            [class.active]="currentGroup === group"
-            (click)="selectGroup(group)">
-          {{ group.name }}
-          <button class="danger"
-                  *ngIf="isAdminOfGroup(group)"
-                  (click)="deleteGroup(group); $event.stopPropagation()">Delete</button>
-        </li>
-      </ul>
+      <div *ngIf="groups.length === 0">
+        <p>No groups found.</p>
+      </div>
+
+      <div *ngFor="let group of groups" (click)="selectGroup(group)">
+        <h3>{{ group.name }}</h3>
+        <p>Channels: {{ group.channels.join(', ') }}</p>
+            <button class="delete-btn" (click)="deleteGroup(group._id)">Delete</button>
+      </div>
 
       <!-- Add Group -->
       <div>
@@ -67,7 +66,7 @@
 
     <!-- LOGOUT BUTTON AT BOTTOM -->
     <div class="sidebar-footer">
-      <button class="sign-out" (click)="signOut()">Log out</button>
+      <button class="sign-out" (click)="logout()">Log out</button>
     </div>
   </aside>
 
@@ -79,15 +78,18 @@
     </div>
 
     <div class="messages">
-      <div *ngFor="let msg of messages[currentGroup._id]?.[currentChannel]" class="message">
-        <span class="sender">{{ msg.sender }}:</span>
-        <span class="text">{{ msg.text }}</span>
+      <div *ngFor="let msg of messages[currentGroup?._id]?.[currentChannel]" class="message" [ngClass]="{'system': msg.system}">
+        <img *ngIf="!msg.system" class="avatar" [src]="msg.avatar || '/assets/default-avatar.png'" />
+        <span class="sender">{{ msg.system ? '' : msg.sender + ':' }}</span>
+        <span class="text" *ngIf="msg.text">{{ msg.text }}</span>
+        <img *ngIf="msg.image" class="message-image" [src]="msg.image" />
         <span class="time">{{ msg.timestamp | date:'shortTime' }}</span>
       </div>
     </div>
 
     <div class="message-input">
       <input type="text" placeholder="Type a message..." [(ngModel)]="newMessage" (keyup.enter)="sendMessage()" />
+      <input type="file" (change)="onFileSelected($event)" accept="image/*" />
       <button (click)="sendMessage()">Send</button>
     </div>
   </main>

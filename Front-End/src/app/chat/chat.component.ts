@@ -16,7 +16,7 @@ interface Group {
   _id: string;
   name: string;
   channels: string[];
-  users: string[]; // array of user IDs or emails
+  users: { _id: string; username: string; email: string }[]; // store full user info
 }
 
 @Component({
@@ -36,7 +36,7 @@ export class ChatComponent implements OnInit {
   selectedFile: File | null = null;
 
   groups: Group[] = [];
-  channels: { [groupName: string]: string[] } = {}; // maps group name to channels
+  channels: { [groupId: string]: string[] } = {}; // map group ID to channels
 
   private socket!: Socket;
 
@@ -64,16 +64,22 @@ export class ChatComponent implements OnInit {
     });
   }
 
-  // ------------------ LOAD USER GROUPS ------------------
+  // ------------------ LOAD GROUPS WHERE USER IS A MEMBER ------------------
   loadUserGroups() {
     if (!this.userId) return;
 
+    // Backend endpoint returns groups where the user is in `users` array
     this.http.get<Group[]>(`http://localhost:3000/api/groups/user/${this.userId}`)
       .subscribe({
         next: (groups) => {
           this.groups = groups;
+
+          if (!groups || groups.length === 0) {
+            console.log('You are not a member of any groups yet.');
+          }
+
           groups.forEach(g => {
-            this.channels[g.name] = g.channels;
+            this.channels[g._id] = g.channels;
           });
         },
         error: (err) => console.error('Failed to load user groups', err)
@@ -92,8 +98,9 @@ export class ChatComponent implements OnInit {
 
     this.currentChannel = channel;
     this.messages = [];
+
     this.socket.emit('join', {
-      group: this.currentGroup.name,
+      groupId: this.currentGroup._id,
       channel: this.currentChannel
     });
   }
@@ -106,7 +113,7 @@ export class ChatComponent implements OnInit {
       const reader = new FileReader();
       reader.onload = () => {
         this.socket.emit('sendMessage', {
-          group: this.currentGroup?.name,
+          groupId: this.currentGroup?._id,
           channel: this.currentChannel,
           sender: this.username,
           image: reader.result, // base64 image
@@ -118,7 +125,7 @@ export class ChatComponent implements OnInit {
       reader.readAsDataURL(this.selectedFile);
     } else {
       this.socket.emit('sendMessage', {
-        group: this.currentGroup?.name,
+        groupId: this.currentGroup?._id,
         channel: this.currentChannel,
         sender: this.username,
         text: this.newMessage

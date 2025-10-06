@@ -3,61 +3,69 @@ const router = express.Router();
 const Group = require('../group');
 const User = require('../user-class');
 
-// Create new group
+// Create a new group
 router.post('/', async (req, res) => {
-  const { name, adminId } = req.body;
-
-  if (!name || !adminId) {
-    return res.status(400).json({ error: 'Missing name or adminId' });
-  }
-
   try {
-    // Ensure the admin user exists
-    const admin = await User.findById(adminId);
-    if (!admin) return res.status(404).json({ error: 'Admin user not found' });
+    const { name, creatorEmail } = req.body;
+    if (!name) return res.status(400).json({ error: 'Missing group name' });
 
-    // Create the group
-    const group = new Group({
-      name: name,
-      admins: [adminId],   // automatically set the creator as admin
-      users: [adminId],    // add the creator as a member
-      channels: []         // empty channels by default
+    const user = await User.findOne({ email: creatorEmail });
+    if (!user) return res.status(404).json({ error: 'Creator not found' });
+
+    const newGroup = new Group({
+      name,
+      channels: ['General'],
+      users: [user._id],
+      admins: [user._id]
     });
 
-    await group.save();
-    await group.populate('users', 'username email'); // optional, for frontend display
+    await newGroup.save();
+    await newGroup.populate('users', 'username email');
 
-    res.status(201).json(group);
+    res.status(201).json(newGroup);
+
   } catch (err) {
-    console.error('Create group error:', err);
-    res.status(500).json({ error: 'Server error' });
+    console.error(err);
+    res.status(500).json({ error: 'Failed to create group' });
   }
 });
 
-
-
-// Get all groups
-router.get('/', async (req, res) => {
+// Add channel
+router.post('/:groupId/add-channel', async (req, res) => {
   try {
-    const groups = await Group.find().populate('users', 'username email');
-    res.json(groups);
+    const { groupId } = req.params;
+    const { channel } = req.body;
+
+    if (!channel) return res.status(400).json({ error: 'Missing channel name' });
+
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).json({ error: 'Group not found' });
+
+    if (!group.channels.includes(channel)) {
+      group.channels.push(channel);
+      await group.save();
+    }
+
+    res.json({ success: true, channels: group.channels });
   } catch (err) {
-    console.error('Fetch groups error:', err);
-    res.status(500).json({ error: 'Server error' });
+    console.error(err);
+    res.status(500).json({ error: 'Failed to add channel' });
   }
 });
 
 // Add user to group
 router.post('/:groupId/add-user', async (req, res) => {
-  const { groupId } = req.params;
-  const { email } = req.body;
-
   try {
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    const { groupId } = req.params;
+    const { email } = req.body;
+
+    if (!email) return res.status(400).json({ error: 'Missing email' });
 
     const group = await Group.findById(groupId);
     if (!group) return res.status(404).json({ error: 'Group not found' });
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: 'User not found' });
 
     if (!group.users.includes(user._id)) {
       group.users.push(user._id);
@@ -65,41 +73,41 @@ router.post('/:groupId/add-user', async (req, res) => {
     }
 
     await group.populate('users', 'username email');
-    res.json(group);
+    res.json({ success: true, users: group.users });
   } catch (err) {
-    console.error('Add user to group error:', err);
-    res.status(500).json({ error: 'Server error' });
+    console.error(err);
+    res.status(500).json({ error: 'Failed to add user' });
   }
 });
 
-// Update group channels
-router.put('/:groupId/update-channels', async (req, res) => {
-  const { groupId } = req.params;
-  const { channels } = req.body;
-
+// Delete channel
+router.post('/:groupId/delete-channel', async (req, res) => {
   try {
+    const { groupId } = req.params;
+    const { channel } = req.body;
+
     const group = await Group.findById(groupId);
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
-    group.channels = channels;
+    group.channels = group.channels.filter(ch => ch !== channel);
     await group.save();
 
-    res.json(group);
+    res.json({ success: true, channels: group.channels });
   } catch (err) {
-    console.error('Update channels error:', err);
-    res.status(500).json({ error: 'Server error' });
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete channel' });
   }
 });
 
 // Delete group
-router.delete('/:groupId', async (req, res) => {
-  const { groupId } = req.params;
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
   try {
-    await Group.findByIdAndDelete(groupId);
+    await Group.findByIdAndDelete(id);
     res.json({ success: true });
   } catch (err) {
-    console.error('Delete group error:', err);
-    res.status(500).json({ error: 'Server error' });
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete group' });
   }
 });
 
