@@ -92,6 +92,21 @@
         &:hover { background-color: #303f9f; }
       }
     }
+
+        .sign-out {
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
+        border: none;
+        background-color: #f44336;
+        color: #fff;
+        cursor: pointer;
+        transition: 0.2s;
+
+        &:hover {
+          background-color: #d32f2f;
+        }
+      }
+    }
   }
 
   .chat-area {
@@ -214,4 +229,3 @@
       &:hover { background-color: #303f9f; }
     }
   }
-}

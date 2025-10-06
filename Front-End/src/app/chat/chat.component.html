@@ -5,7 +5,7 @@
     <div class="user-info">
       <img class="avatar" src="assets/avatar.png" alt="Avatar" />
       <h3>{{ username || 'Guest' }}</h3>
-      <button (click)="logout()">Sign Out</button>
+      <button (click)="signOut()">Sign Out</button>
     </div>
 
     <!-- Groups -->
@@ -31,6 +31,8 @@
         </li>
       </ul>
     </div>
+
+    <button class="sign-out" (click)="signOut()">Log out</button>
   </aside>
 
   <!-- Main Chat Area -->
@@ -44,21 +46,28 @@
         <img class="avatar" src="assets/avatar.png" alt="Avatar" />
         <div class="message-content">
           <span class="sender">{{ msg.sender }}</span>
-          <span class="text">{{ msg.text }}</span>
+
+          <!-- Message Text -->
+          <span class="text" *ngIf="msg.text">{{ msg.text }}</span>
+
+          <!-- Image Display -->
+          <img *ngIf="msg.image" [src]="msg.image" alt="Sent image" class="chat-image">
+
           <span class="time">{{ msg.timestamp | date:'shortTime' }}</span>
         </div>
       </div>
     </div>
 
+    <!-- Message Input -->
     <div class="message-input">
-      <input type="text" placeholder="Type a message..." [(ngModel)]="newMessage" (keyup.enter)="sendMessage()"/>
+      <input type="text" placeholder="Type a message..." [(ngModel)]="newMessage" (keyup.enter)="sendMessage()" />
+
+      <!-- Image Upload -->
+      <input type="file" (change)="onFileSelected($event)" accept="image/*" />
+
       <button (click)="sendMessage()">Send</button>
     </div>
   </main>
 
-  <!-- Login Overlay -->
-  <div class="login-overlay" *ngIf="!username">
-    <input placeholder="Enter your username" [(ngModel)]="loginInput"/>
-    <button (click)="login()">Login</button>
-  </div>
+
 </div>

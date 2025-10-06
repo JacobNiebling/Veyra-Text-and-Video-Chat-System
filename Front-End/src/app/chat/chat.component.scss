@@ -14,6 +14,20 @@
     border-right: 1px solid #e0e0e0;
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.03);
 
+    .sign-out {
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    border: none;
+    background-color: #f44336;
+    color: #fff;
+    cursor: pointer;
+    transition: 0.2s;
+
+    &:hover {
+      background-color: #d32f2f;
+    }
+  }
+}
     .user-info {
       display: flex;
       align-items: center;
@@ -293,7 +307,6 @@
       }
     }
   }
-}
 
 /* Slide-in animation for messages */
 @keyframes slideIn {
@@ -301,4 +314,11 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+.chat-image {
+  max-width: 200px;
+  max-height: 200px;
+  display: block;
+  margin-top: 5px;
+  border-radius: 5px;
 }

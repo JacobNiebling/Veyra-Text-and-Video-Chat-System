@@ -1,22 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-
-interface User {
-  id: string;
-  username: string;
-  email: string;
-  roles: string[];
-  groups: string[];
-  online?: boolean;
-}
-
-interface Group {
-  id: string;
-  name: string;
-  members: User[];
-}
+import { AdminService, User, Group } from './admin.service';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -25,163 +11,158 @@ interface Group {
   templateUrl: './admin.component.html',
   styleUrls: ['./admin.component.scss']
 })
-export class AdminDashboardComponent {
+export class AdminDashboardComponent implements OnInit {
   pages = ['Users', 'Groups', 'Settings'];
   currentPage = 'Users';
 
-  users: User[] = [
-    { id: '1', username: 'super', email: 'superadmin@test.com', roles: ['super_admin'], groups: ['all'] },
-    { id: '2', username: 'groupadmin', email: 'groupadmin@test.com', roles: ['group_admin'], groups: ['group1'] },
-    { id: '3', username: 'chatuser', email: 'chatuser@test.com', roles: ['chat_user'], groups: ['group1','group2'] }
-  ];
-
-  groups: Group[] = [
-    { id: '1', name: 'Group 1', members: [this.users[1], this.users[2]] },
-    { id: '2', name: 'Group 2', members: [this.users[2]] }
-  ];
+  users: User[] = [];
+  groups: Group[] = [];
 
   selectedUser: User | null = null;
   selectedGroup: Group | null = null;
 
-  newUser = { username: '', email: '', password: '', role: 'chat_user' };
-  newGroup = { name: '' };
-  errorMessage = '';
-  successMessage = '';
-
-  selectedRole: { [key: string]: string } = {}; // For role dropdowns
-
-  feedPosts = [
-    { user: 'Alice', message: 'Just joined the team!' },
-    { user: 'Bob', message: 'Meeting starts in 5 minutes.' },
-    { user: 'Charlie', message: 'Uploaded new assets.' },
-  ];
-
-    // ADD MIC/CAM state for top bar buttons
-    isMicOn = true;
-    isCamOn = true;
-
-    toggleMic() { this.isMicOn = !this.isMicOn; }
-    toggleCamera() { this.isCamOn = !this.isCamOn; }
-
-
-  // SETTINGS VARIABLES
-  settings = {
-    theme: 'light', // 'light' or 'dark'
-    emailNotifications: true,
-    defaultUserRole: 'chat_user'
+  // newUser now correctly uses roles array and groups
+  newUser: { username: string; email: string; password: string; roles: string[]; groups: string[] } = {
+    username: '',
+    email: '',
+    password: '',
+    roles: ['chat_user'], // default role
+    groups: []
   };
 
-  // PAGE SELECTION
-  selectPage(page: string) {
-    this.currentPage = page;
-    this.selectedUser = null;
-    this.selectedGroup = null;
+  newGroup = { name: '', adminId: '' };
+
+  errorMessage = '';
+  successMessage = '';
+  selectedRole: { [key: string]: string } = {};
+
+  constructor(private router: Router, private adminService: AdminService) {}
+
+  ngOnInit() {
+    this.loadUsers();
+    this.loadGroups();
   }
 
-  // USER SELECTION
-  selectUser(user: User) {
-    this.selectedUser = user;
+  // ------------------ LOAD DATA ------------------
+  loadUsers() {
+    this.adminService.getUsers().subscribe({
+      next: (data) => this.users = data,
+      error: () => this.showError('Failed to load users')
+    });
   }
 
-  // GROUP SELECTION
-  selectGroup(group: Group) {
-    this.selectedGroup = group;
+  loadGroups() {
+    this.adminService.getGroups().subscribe({
+      next: (data) => this.groups = data,
+      error: () => this.showError('Failed to load groups')
+    });
   }
 
-  // ADD/REMOVE USERS
+  // ------------------ USERS ------------------
   addUser() {
     if (!this.newUser.username || !this.newUser.email || !this.newUser.password) {
-      this.showError('Please fill all fields');
-      return;
+      return this.showError('Please fill all fields');
     }
-    const id = (this.users.length + 1).toString();
-    this.users.push({
-      id,
+
+    // Build a proper User object
+    const userToAdd: User & { password: string } = {
       username: this.newUser.username,
       email: this.newUser.email,
-      roles: [this.newUser.role],
-      groups: []
+      password: this.newUser.password,
+      roles: this.newUser.roles,
+      groups: this.newUser.groups
+    };
+
+    this.adminService.addUser(userToAdd).subscribe({
+      next: (user: User) => {
+        this.users.push(user);
+        this.showSuccess(`${user.username} added`);
+        // Reset form
+        this.newUser = { username: '', email: '', password: '', roles: ['chat_user'], groups: [] };
+      },
+      error: () => this.showError('Failed to add user')
     });
-    this.showSuccess(`${this.newUser.username} added`);
-    this.newUser = { username: '', email: '', password: '', role: 'chat_user' };
   }
 
   removeUser(user: User) {
-    this.users = this.users.filter(u => u !== user);
-    if(this.selectedUser === user) this.selectedUser = null;
-    this.groups.forEach(g => g.members = g.members.filter(m => m !== user));
-    this.showSuccess(`${user.username} removed`);
+    if (!user._id) return;
+    this.adminService.removeUser(user._id).subscribe({
+      next: () => {
+        this.users = this.users.filter(u => u._id !== user._id);
+        this.groups.forEach(g => g.members = g.members.filter(m => m._id !== user._id));
+        this.showSuccess(`${user.username} removed`);
+      },
+      error: () => this.showError('Failed to remove user')
+    });
   }
 
-  // PROMOTE/REMOVE ROLE
   promoteUser(user: User, role: string) {
-    if (!user.roles.includes(role)) {
-      user.roles.push(role);
-      this.showSuccess(`${user.username} promoted to ${role.replace('_',' ')}`);
-    }
+    if (!user._id) return;
+    const roles = [...user.roles];
+    if (!roles.includes(role)) roles.push(role);
+
+    this.adminService.updateUserRoles(user._id, roles).subscribe({
+      next: (u: User) => {
+        user.roles = u.roles;
+        this.showSuccess(`${user.username} promoted to ${role}`);
+      },
+      error: () => this.showError('Failed to promote user')
+    });
   }
 
   downgradeUserRole(user: User, role: string) {
-    user.roles = user.roles.filter(r => r !== role);
-    this.showSuccess(`${role.replace('_',' ')} removed from ${user.username}`);
-    this.selectedRole[user.id] = '';
+    if (!user._id) return;
+    const roles = user.roles.filter(r => r !== role);
+    this.adminService.updateUserRoles(user._id, roles).subscribe({
+      next: (u: User) => {
+        user.roles = u.roles;
+        this.showSuccess(`${role} removed from ${user.username}`);
+        this.selectedRole[user._id!] = '';
+      },
+      error: () => this.showError('Failed to remove role')
+    });
   }
 
-  // ADD GROUP
+  // ------------------ GROUPS ------------------
   addGroup() {
-    if(!this.newGroup.name) {
-      this.showError('Please enter group name');
-      return;
-    }
-    const id = (this.groups.length + 1).toString();
-    this.groups.push({ id, name: this.newGroup.name, members: [] });
-    this.showSuccess(`Group "${this.newGroup.name}" added`);
-    this.newGroup.name = '';
+    if (!this.newGroup.name) return this.showError('Please enter group name');
+
+    this.adminService.addGroup({ name: this.newGroup.name, adminId: this.newGroup.adminId }).subscribe({
+      next: (group: Group) => {
+        this.groups.push(group);
+        this.showSuccess(`Group "${group.name}" added`);
+        this.newGroup = { name: '', adminId: '' };
+      },
+      error: () => this.showError('Failed to add group')
+    });
   }
 
-  // SETTINGS METHODS
-  // Toggle between light/dark theme
-  toggleTheme() {
-    this.settings.theme = this.settings.theme === 'light' ? 'dark' : 'light';
-    this.showSuccess(`Theme changed to ${this.settings.theme}`);
+  addUserToGroup(group: Group, userId: string) {
+    if (!group._id) return;
+    this.adminService.addUserToGroup(group._id, userId).subscribe({
+      next: (updatedGroup: Group) => {
+        const index = this.groups.findIndex(g => g._id === updatedGroup._id);
+        if (index > -1) this.groups[index] = updatedGroup;
+        this.showSuccess(`User added to ${updatedGroup.name}`);
+      },
+      error: () => this.showError('Failed to add user to group')
+    });
   }
 
-  // Enable/disable email notifications
-  toggleEmailNotifications() {
-    this.settings.emailNotifications = !this.settings.emailNotifications;
-    this.showSuccess(`Email notifications ${this.settings.emailNotifications ? 'enabled' : 'disabled'}`);
-  }
+  // ------------------ UTILITIES ------------------
+  selectPage(page: string) { this.currentPage = page; this.selectedUser = null; this.selectedGroup = null; }
+  selectUser(user: User) { this.selectedUser = user; }
+  selectGroup(group: Group) { this.selectedGroup = group; }
 
-  // Change default role for new users
-  changeDefaultRole(role: string) {
-    this.settings.defaultUserRole = role;
-    this.showSuccess(`Default role for new users set to ${role.replace('_', ' ')}`);
-  }
-
-  // Simple success/error messages
-  showSuccess(msg: string) {
-    this.successMessage = msg;
-    setTimeout(() => this.successMessage = '', 3000);
-  }
-
-  showError(msg: string) {
-    this.errorMessage = msg;
-    setTimeout(() => this.errorMessage = '', 3000);
-  }
-
-
-  // UTILITIES
   getUsernames(users: User[] | undefined): string {
-    if(!users || users.length === 0) return 'None';
-    return users.map(u => u.username).join(', ');
+    return users?.map(u => u.username).join(', ') || 'None';
   }
 
-  constructor(private router: Router) {}
-  signOut() {
-    // Optional: clear session/local storage
-    localStorage.clear();
+  showSuccess(msg: string) { this.successMessage = msg; setTimeout(() => this.successMessage = '', 3000); }
+  showError(msg: string) { this.errorMessage = msg; setTimeout(() => this.errorMessage = '', 3000); }
 
-    // Redirect to login page
+  signOut() {
+    localStorage.clear();
     this.router.navigate(['/login']);
-    }
+  }
 }

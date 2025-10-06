@@ -1,4 +1,5 @@
-<div class="admin-container" [ngClass]="settings.theme">
+<div class="admin-container" [ngClass]="settings?.theme || 'light'">
+
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-header">Admin Dashboard</div>
@@ -9,7 +10,7 @@
         {{ page }}
       </li>
     </ul>
-        <button class="sign-out" (click)="signOut()">Log out</button>
+    <button class="sign-out" (click)="signOut()">Log out</button>
   </aside>
 
   <!-- Main Content -->
@@ -27,13 +28,15 @@
 
     <!-- USERS PAGE -->
     <div *ngIf="currentPage === 'Users'" class="users-page">
+
+      <!-- Add User Form -->
       <div class="card add-user-form">
         <h3>Add New User</h3>
         <div class="form-group">
           <input placeholder="Username" [(ngModel)]="newUser.username" />
           <input placeholder="Email" [(ngModel)]="newUser.email" />
           <input type="password" placeholder="Password" [(ngModel)]="newUser.password" />
-          <select [(ngModel)]="newUser.role">
+          <select [(ngModel)]="newUser.roles[0]">
             <option value="chat_user">Chat User</option>
             <option value="group_admin">Group Admin</option>
             <option value="super_admin">Super Admin</option>
@@ -42,6 +45,7 @@
         </div>
       </div>
 
+      <!-- Users Table -->
       <div class="card users-table">
         <table>
           <thead>
@@ -57,29 +61,41 @@
             <tr *ngFor="let user of users" (click)="selectUser(user)" [class.selected]="selectedUser === user">
               <td>{{ user.username }}</td>
               <td>{{ user.email }}</td>
+
+              <!-- Roles -->
               <td>
                 <span class="role-badge" *ngFor="let r of user.roles">{{ r }}</span>
-                <select [(ngModel)]="selectedRole[user.id]">
+
+                <select [(ngModel)]="selectedRole[user._id]">
                   <option value="" disabled selected>Remove role...</option>
                   <option *ngFor="let r of user.roles" [value]="r">{{ r }}</option>
                 </select>
-                <button *ngIf="selectedRole[user.id]" (click)="downgradeUserRole(user, selectedRole[user.id])">Remove</button>
+                <button *ngIf="selectedRole[user._id]"
+                        (click)="downgradeUserRole(user, selectedRole[user._id]); $event.stopPropagation()">
+                  Remove
+                </button>
               </td>
+
+              <!-- Groups -->
               <td>
-                <span class="group-badge" *ngFor="let g of user.groups">{{ g }}</span>
+                <span class="group-badge" *ngFor="let g of user.groups">{{ g.name || g }}</span>
               </td>
+
+              <!-- Actions -->
               <td class="actions">
                 <button (click)="promoteUser(user, 'group_admin'); $event.stopPropagation()">Promote</button>
                 <button (click)="removeUser(user); $event.stopPropagation()">Remove</button>
               </td>
             </tr>
-          </tbody>
+
         </table>
       </div>
     </div>
 
     <!-- GROUPS PAGE -->
     <div *ngIf="currentPage === 'Groups'" class="groups-page">
+
+      <!-- Add Group -->
       <div class="card add-group">
         <h3>Add New Group</h3>
         <div class="form-group">
@@ -88,6 +104,7 @@
         </div>
       </div>
 
+      <!-- Groups Table -->
       <div class="card groups-table">
         <table>
           <thead>
@@ -102,7 +119,17 @@
               <td>{{ getUsernames(group.members) }}</td>
             </tr>
           </tbody>
+          <tbody *ngIf="users.length === 0">
         </table>
+      </div>
+
+      <!-- Add User to Group -->
+      <div class="card add-user-to-group" *ngIf="selectedGroup">
+        <h4>Add User to {{ selectedGroup.name }}</h4>
+        <input #userId type="text" placeholder="Enter user ID or email" />
+        <button (click)="addUserToGroup(selectedGroup, userId.value); userId.value=''">
+          Add User
+        </button>
       </div>
     </div>
 
@@ -114,7 +141,7 @@
       <div class="settings-item">
         <label>Theme:</label>
         <button (click)="toggleTheme()">
-          {{ settings.theme === 'light' ? 'Switch to Dark' : 'Switch to Light' }}
+          {{ settings?.theme === 'light' ? 'Switch to Dark' : 'Switch to Light' }}
         </button>
       </div>
 
@@ -122,14 +149,15 @@
       <div class="settings-item">
         <label>Email Notifications:</label>
         <button (click)="toggleEmailNotifications()">
-          {{ settings.emailNotifications ? 'Disable' : 'Enable' }}
+          {{ settings?.emailNotifications ? 'Disable' : 'Enable' }}
         </button>
       </div>
 
       <!-- Default role -->
       <div class="settings-item">
         <label>Default Role for New Users:</label>
-        <select [(ngModel)]="settings.defaultUserRole" (change)="changeDefaultRole(settings.defaultUserRole)">
+        <select [(ngModel)]="settings.defaultUserRole"
+                (change)="changeDefaultRole(settings.defaultUserRole)">
           <option value="chat_user">Chat User</option>
           <option value="group_admin">Group Admin</option>
           <option value="super_admin">Super Admin</option>
@@ -144,3 +172,5 @@
         </button>
       </div>
     </div>
+  </main>
+</div>

@@ -4,7 +4,6 @@
   <aside class="sidebar">
     <div class="user-info">
       <h3>{{ username || 'Guest' }}</h3>
-      <button (click)="logout()">Log out</button>
     </div>
 
     <!-- Groups Section -->
@@ -15,11 +14,14 @@
             [class.active]="currentGroup === group"
             (click)="selectGroup(group)">
           {{ group.name }}
-          <button class="danger" *ngIf="isAdminOfGroup(group)" (click)="deleteGroup(group); $event.stopPropagation()">Delete</button>
+          <button class="danger"
+                  *ngIf="isAdminOfGroup(group)"
+                  (click)="deleteGroup(group); $event.stopPropagation()">Delete</button>
         </li>
       </ul>
+
       <!-- Add Group -->
-      <div *ngIf="isGroupAdmin">
+      <div>
         <input #newGroupName type="text" placeholder="New group name" />
         <button (click)="addGroup(newGroupName.value); newGroupName.value=''">Add Group</button>
       </div>
@@ -33,14 +35,39 @@
             [class.active]="currentChannel === ch"
             (click)="selectChannel(ch)">
           {{ ch }}
-          <button class="danger" *ngIf="isAdminOfGroup(currentGroup)" (click)="deleteChannel(currentGroup, ch)">Delete</button>
+          <button class="danger"
+                  *ngIf="isAdminOfGroup(currentGroup)"
+                  (click)="deleteChannel(currentGroup, ch)">Delete</button>
         </li>
       </ul>
+
       <!-- Add Channel -->
       <div *ngIf="isAdminOfGroup(currentGroup)">
         <input #newChannelName type="text" placeholder="New channel name" />
         <button (click)="addChannel(currentGroup, newChannelName.value); newChannelName.value=''">Add Channel</button>
       </div>
+    </div>
+
+    <!-- Add Users Section -->
+    <div *ngIf="currentGroup && isAdminOfGroup(currentGroup)">
+      <h4>Add User to {{ currentGroup.name }}</h4>
+      <input #userEmail type="email" placeholder="User email" />
+      <button (click)="addUserToGroup(userEmail.value); userEmail.value=''">Add User</button>
+
+      <!-- Display Current Users -->
+      <div class="group-users" *ngIf="currentGroup.users?.length">
+        <h5>Current Members:</h5>
+        <ul>
+          <li *ngFor="let user of currentGroup.users">
+            {{ user.username }} ({{ user.email }})
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- LOGOUT BUTTON AT BOTTOM -->
+    <div class="sidebar-footer">
+      <button class="sign-out" (click)="signOut()">Log out</button>
     </div>
   </aside>
 
@@ -52,7 +79,7 @@
     </div>
 
     <div class="messages">
-      <div *ngFor="let msg of messages[currentGroup.id][currentChannel]" class="message">
+      <div *ngFor="let msg of messages[currentGroup._id]?.[currentChannel]" class="message">
         <span class="sender">{{ msg.sender }}:</span>
         <span class="text">{{ msg.text }}</span>
         <span class="time">{{ msg.timestamp | date:'shortTime' }}</span>

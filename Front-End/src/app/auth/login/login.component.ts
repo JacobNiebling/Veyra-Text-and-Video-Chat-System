@@ -18,16 +18,12 @@ export class LoginComponent {
   constructor(private http: HttpClient, private router: Router) {}
 
   onSubmit() {
+    // Call backend API which should check MongoDB
     this.http.post<any>('http://localhost:3000/api/login', this.loginData).subscribe({
       next: (res) => {
         if (res.valid) {
-          // Store all user info in localStorage
-          localStorage.setItem('id', JSON.stringify(res.id));
-          localStorage.setItem('username', JSON.stringify(res.username));
-          localStorage.setItem('email', JSON.stringify(res.email));
-          localStorage.setItem('roles', JSON.stringify(res.roles));
-          localStorage.setItem('groups', JSON.stringify(res.groups));
-          localStorage.setItem('valid', JSON.stringify(res.valid));
+          // Store user info in localStorage
+          localStorage.setItem('user', JSON.stringify(res));
 
           // Redirect based on role
           if (res.roles.includes("super_admin")) {
@@ -42,6 +38,7 @@ export class LoginComponent {
         }
       },
       error: (err) => {
+        console.error(err);
         this.errorMessage = "Server error";
       }
     });
