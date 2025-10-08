@@ -1,19 +1,14 @@
 <div class="video-chat-container">
-  <div class="video-area">
-    <div id="video-grid" class="video-grid"></div>
-    <div class="controls">
-      <button (click)="toggleMute()">{{ muted ? 'Unmute' : 'Mute' }}</button>
-      <button (click)="shareScreen()">Share Screen</button>
+  <div class="video-grid" #videoGrid>
+    <div class="participants">
+      <div class="video-wrapper" *ngFor="let p of participants">
+        <video autoplay playsinline></video>
+        <div class="status-ring" [class.speaking]="p.speaking"></div>
+      </div>
     </div>
   </div>
 
-  <div class="chat-area">
-    <div class="messages">
-      <div *ngFor="let msg of messages" class="message">
-        <strong>{{ msg.sender }}:</strong> {{ msg.text }}
-      </div>
-    </div>
-    <input #chatInput placeholder="Type a message..." />
-    <button (click)="sendMessage(chatInput)">Send</button>
+  <div class="controls">
+    <button (click)="toggleMute()">{{ muted ? 'Unmute' : 'Mute' }}</button>
   </div>
 </div>

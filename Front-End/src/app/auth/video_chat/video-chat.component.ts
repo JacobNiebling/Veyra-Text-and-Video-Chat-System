@@ -1,12 +1,11 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
 import Peer from 'peerjs';
 
-interface Message {
-  sender: string;
-  text: string;
-  avatar?: string;
-  timestamp: Date;
+interface Participant {
+  id: string;
+  stream: MediaStream;
+  speaking?: boolean;
 }
 
 @Component({
@@ -15,74 +14,59 @@ interface Message {
   styleUrls: ['./video-chat.component.scss']
 })
 export class VideoChatComponent implements OnInit, OnDestroy {
+  @ViewChild('videoGrid') videoGrid!: ElementRef<HTMLDivElement>;
+
   socket!: Socket;
   peer!: Peer;
   myStream!: MediaStream;
-  peers: { [id: string]: MediaStream } = {};
-  messages: Message[] = [];
-  username = 'User_' + Math.floor(Math.random() * 1000);
-  group = 'general';
-  channel = 'main';
+  participants: Participant[] = [];
   muted = false;
 
-  constructor() {}
+  ngOnInit() {
+    this.initVideo();
+  }
 
-  async ngOnInit() {
-    // 1️⃣ Get user media
+  ngOnDestroy() {
+    this.peer?.destroy();
+    this.socket?.disconnect();
+  }
+
+  async initVideo() {
     this.myStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    this.addVideo(this.myStream, this.username);
+    this.addVideo(this.myStream, 'me');
 
-    // 2️⃣ Setup Socket.IO
     this.socket = io('http://localhost:3000');
-
-    // 3️⃣ Setup PeerJS
-    this.peer = new Peer({
-      host: 'localhost',
-      port: 3000,
-      path: '/peerjs'
-    });
+    this.peer = new Peer({ host: 'localhost', port: 3000, path: '/peerjs' });
 
     this.peer.on('open', (id) => {
-      console.log('My peer ID:', id);
-      // Join room
-      this.socket.emit('join', { group: this.group, channel: this.channel, username: this.username });
+      console.log('Peer ID:', id);
+      // join room logic
     });
 
-    // Receive call
     this.peer.on('call', (call) => {
       call.answer(this.myStream);
-      call.on('stream', (remoteStream) => this.addVideo(remoteStream, call.peer));
+      call.on('stream', (stream) => this.addVideo(stream, call.peer));
     });
 
-    // Socket.IO events
-    this.socket.on('userJoined', ({ username }) => console.log(username, 'joined'));
-    this.socket.on('previousMessages', (msgs: Message[]) => this.messages.push(...msgs));
-    this.socket.on('receiveMessage', (msg: Message) => this.messages.push(msg));
-    this.socket.on('userLeft', ({ username }) => console.log(username, 'left'));
-
-    // Connect to new peers
-    this.socket.on('userJoined', ({ username, peerId }) => {
+    this.socket.on('userJoined', ({ peerId }) => {
       this.connectToNewUser(peerId, this.myStream);
     });
   }
 
-  ngOnDestroy() {
-    this.peer.destroy();
-    this.socket.disconnect();
-  }
-
-  // ------------------- Video -------------------
   addVideo(stream: MediaStream, id: string) {
-    const videoGrid = document.getElementById('video-grid')!;
-    let videoEl = document.getElementById(id) as HTMLVideoElement;
-    if (!videoEl) {
-      videoEl = document.createElement('video');
-      videoEl.id = id;
-      videoEl.autoplay = true;
-      videoEl.playsInline = true;
-      videoEl.srcObject = stream;
-      videoGrid.appendChild(videoEl);
-    }
+    const videoEl = document.createElement('video');
+    videoEl.srcObject = stream;
+    videoEl.autoplay = true;
+    videoEl.playsInline = true;
+
+    const wrapper = document.createElement('div');
+    wrapper.classList.add('video-wrapper');
+    wrapper.id = id;
+    wrapper.appendChild(videoEl);
+
+    this.videoGrid.nativeElement.querySelector('.participants')?.appendChild(wrapper);
+
+    this.participants.push({ id, stream });
   }
 
   connectToNewUser(peerId: string, stream: MediaStream) {
@@ -90,27 +74,13 @@ export class VideoChatComponent implements OnInit, OnDestroy {
     call.on('stream', (remoteStream) => this.addVideo(remoteStream, peerId));
   }
 
-  // ------------------- Chat -------------------
-  sendMessage(input: HTMLInputElement) {
-    if (!input.value) return;
-    const msg: Message = { sender: this.username, text: input.value, timestamp: new Date() };
-    this.socket.emit('sendMessage', { group: this.group, channel: this.channel, sender: this.username, text: input.value });
-    this.messages.push(msg);
-    input.value = '';
-  }
-
-  // ------------------- Controls -------------------
   toggleMute() {
-    this.myStream.getAudioTracks()[0].enabled = this.muted;
-    this.muted = !this.muted;
-  }
-
-  async shareScreen() {
-    const screenStream = await (navigator.mediaDevices as any).getDisplayMedia({ video: true });
-    this.addVideo(screenStream, 'screen-share');
-    // Optional: Replace your video stream for peer calls
-    Object.values(this.peers).forEach(peerStream => {
-      // TODO: Replace stream in calls if needed
-    });
+    if (this.myStream) {
+      const audioTrack = this.myStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        this.muted = !audioTrack.enabled;
+      }
+    }
   }
 }

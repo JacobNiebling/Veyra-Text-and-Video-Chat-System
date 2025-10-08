@@ -1,32 +1,34 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { map, Observable } from 'rxjs';
 
 export interface User {
   _id?: string;
   username: string;
   email: string;
   roles: string[];
-  groups: string[];
+  groups?: (Group | string)[];
 }
 
 export interface Group {
   _id?: string;
   name: string;
-  members: User[];
+  users?: User[];
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class AdminService {
-  private apiUrl = 'http://localhost:3000/api'; // your backend URL
+  private apiUrl = 'http://localhost:3000/api';
 
   constructor(private http: HttpClient) {}
 
   // USERS
   getUsers(): Observable<User[]> {
-    return this.http.get<User[]>(`${this.apiUrl}/users`);
+    return this.http.get<{ users: User[] }>(`${this.apiUrl}/users`).pipe(
+      map(response => response.users || [])
+    );
   }
 
   addUser(user: User & { password: string }): Observable<User> {
@@ -48,6 +50,10 @@ export class AdminService {
 
   addGroup(group: { name: string; adminId?: string }): Observable<Group> {
     return this.http.post<Group>(`${this.apiUrl}/groups`, group);
+  }
+
+  deleteGroup(id: string): Observable<Group> {
+    return this.http.delete<Group>(`${this.apiUrl}/groups/${id}`);
   }
 
   addUserToGroup(groupId: string, userId: string): Observable<Group> {

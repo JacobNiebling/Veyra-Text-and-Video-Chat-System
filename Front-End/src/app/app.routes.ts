@@ -4,6 +4,7 @@ import { RegisterComponent } from './auth/register/register.component';
 import { ChatComponent } from './chat/chat.component';
 import { AdminDashboardComponent } from './auth/admin/admin-dashboard.component';
 import { GroupDashboardComponent } from './auth/group/group-dashboard.component';
+import { VideoChatComponent } from './auth/video_chat/video-chat.component';
 
 export const routes: Routes = [
   { path: '', component: LoginComponent },
@@ -11,5 +12,6 @@ export const routes: Routes = [
   { path: 'chat', component: ChatComponent },
   { path: 'admin-dashboard', component: AdminDashboardComponent },
   { path: 'group-dashboard', component: GroupDashboardComponent },
+  { path: 'video-chat/:groupId', component: VideoChatComponent },
   { path: '**', redirectTo: '' }
 ];

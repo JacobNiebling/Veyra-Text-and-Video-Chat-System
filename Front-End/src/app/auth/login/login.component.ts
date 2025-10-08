@@ -15,17 +15,20 @@ export class LoginComponent {
   loginData = { email: '', password: '' };
   errorMessage = '';
 
+  private readonly API_BASE_URL = 'http://localhost:3000/api';
+
   constructor(private http: HttpClient, private router: Router) {}
 
   onSubmit() {
-    this.http.post<any>('http://localhost:3000/api/login', this.loginData).subscribe({
+    // POST login data
+    this.http.post<any>(`${this.API_BASE_URL}/login`, this.loginData).subscribe({
       next: (res) => {
         console.log('Login response:', res);
 
-        // Check valid at top level
+        // Check if valid login
         if (res.valid) {
-          // Store user info in localStorage
-          localStorage.setItem('id', res.id);
+          // Save user info in localStorage
+          localStorage.setItem('userId', res.id);
           localStorage.setItem('username', res.username);
           localStorage.setItem('email', res.email);
           localStorage.setItem('roles', JSON.stringify(res.roles));
@@ -35,7 +38,7 @@ export class LoginComponent {
             this.router.navigate(['/admin-dashboard']);
           } else if (res.roles.includes("group_admin")) {
             this.router.navigate(['/group-dashboard']);
-          } else {
+          } else if (res.roles.includes("chat_user")) {
             this.router.navigate(['/chat']);
           }
         } else {
@@ -48,6 +51,4 @@ export class LoginComponent {
       }
     });
   }
-
-
 }

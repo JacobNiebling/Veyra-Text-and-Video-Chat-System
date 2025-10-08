@@ -2,29 +2,43 @@
 
   <!-- Sidebar -->
   <aside class="sidebar">
+
+    <!-- User Info -->
     <div class="user-info">
-      <img class="avatar" src="assets/avatar.png" alt="Avatar" />
+      <img [src]="avatarUrl" alt="Avatar" class="avatar">
       <h3>{{ username || 'Guest' }}</h3>
-      <button (click)="signOut()">Sign Out</button>
+      <button class="sign-out" (click)="signOut()">Log out</button>
     </div>
 
     <!-- Groups -->
     <div class="groups">
       <h4>Groups</h4>
+
       <ul>
         <li *ngFor="let group of groups"
-            [class.active]="currentGroup === group"
+            [class.active]="currentGroup?._id === group._id"
             (click)="selectGroup(group)">
-          {{ group }}
+          <div class="group-item">
+            <div class="avatar">{{ group.name.charAt(0) }}</div>
+            <div class="group-details">
+              <span class="group-name">{{ group.name }}</span>
+              <br />
+              <small class="group-admin">
+                Admin: {{ currentGroup?.createdBy?.username || 'Unknown' }}
+              </small>
+            </div>
+          </div>
         </li>
       </ul>
+
+      <button (click)="refreshUserGroups()">Refresh Groups</button>
     </div>
 
     <!-- Channels -->
     <div class="channels" *ngIf="currentGroup">
       <h4>Channels</h4>
       <ul>
-        <li *ngFor="let ch of channels[currentGroup]"
+        <li *ngFor="let ch of channels[currentGroup._id] || []"
             [class.active]="currentChannel === ch"
             (click)="selectChannel(ch)">
           # {{ ch }}
@@ -32,42 +46,53 @@
       </ul>
     </div>
 
-    <button class="sign-out" (click)="signOut()">Log out</button>
   </aside>
 
-  <!-- Main Chat Area -->
-  <main class="chat-area" *ngIf="currentGroup && currentChannel">
+  <!-- Chat Area -->
+  <main class="chat-area" *ngIf="currentGroup && currentChannel; else noChannelSelected">
+
     <div class="chat-header">
-      <h2>{{ currentGroup }} - #{{ currentChannel }}</h2>
+      <div>
+        <h2>{{ currentGroup.name }} / {{ currentChannel }}</h2>
+        <small>Admin: {{ group.admins?.[0]?.username || 'Unknown' }}</small>
+      </div>
+        <button class="video-btn" (click)="startCall(currentGroup?._id)">Start Call</button>
     </div>
 
     <div class="messages">
-      <div *ngFor="let msg of messages" class="message">
-        <img class="avatar" src="assets/avatar.png" alt="Avatar" />
+      <div *ngFor="let msg of messages" class="message" [ngClass]="{ 'system-message': msg.system }">
+        <div *ngIf="!msg.system" class="avatar">{{ msg.sender.charAt(0) }}</div>
+
         <div class="message-content">
-          <span class="sender">{{ msg.sender }}</span>
+          <!-- System notifications -->
+          <div *ngIf="msg.system" class="system-text">
+            <em>{{ msg.text }}</em>
+          </div>
 
-          <!-- Message Text -->
-          <span class="text" *ngIf="msg.text">{{ msg.text }}</span>
-
-          <!-- Image Display -->
-          <img *ngIf="msg.image" [src]="msg.image" alt="Sent image" class="chat-image">
-
-          <span class="time">{{ msg.timestamp | date:'shortTime' }}</span>
+          <!-- Normal messages -->
+          <ng-container *ngIf="!msg.system">
+            <div class="sender">{{ msg.sender }}</div>
+            <div class="text" *ngIf="msg.text">{{ msg.text }}</div>
+            <img *ngIf="msg.image" [src]="msg.image" class="chat-image">
+            <div class="time">{{ msg.timestamp | date:'shortTime' }}</div>
+          </ng-container>
         </div>
       </div>
     </div>
 
-    <!-- Message Input -->
     <div class="message-input">
-      <input type="text" placeholder="Type a message..." [(ngModel)]="newMessage" (keyup.enter)="sendMessage()" />
-
-      <!-- Image Upload -->
-      <input type="file" (change)="onFileSelected($event)" accept="image/*" />
-
+      <input [(ngModel)]="newMessage" placeholder="Type a message..." />
+      <input type="file" (change)="onFileSelected($event)" />
       <button (click)="sendMessage()">Send</button>
     </div>
+
   </main>
 
+  <!-- No group/channel selected -->
+  <ng-template #noChannelSelected>
+    <main class="chat-area empty">
+      <h3>Select a group and channel to start chatting</h3>
+    </main>
+  </ng-template>
 
 </div>

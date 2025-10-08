@@ -1,104 +1,80 @@
-$primary-color: #4caf50; // green ring for speaker
-$bg-color: #f5f5f5;
-$sidebar-bg: #fff;
-$control-bg: #eee;
-$border-radius: 8px;
-
 .video-chat-container {
   display: flex;
+  flex-direction: column;
   height: 100vh;
-  background-color: $bg-color;
+  width: 100vw;
+  background-color: #f5f5f5;
+  overflow: hidden;
+}
 
-  .videos {
-    flex: 3;
-    display: flex;
-    gap: 15px;
-    padding: 15px;
+.video-grid {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 8px;
+  overflow: hidden;
+}
 
-    .video-wrapper {
-      position: relative;
-      flex: 1;
-      border-radius: $border-radius;
-      overflow: hidden;
-      background-color: #000;
+.participants {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  overflow-y: auto;
+  padding: 4px;
+}
 
-      video {
-        width: 100%;
-        height: auto;
-        display: block;
-      }
+.video-wrapper {
+  flex: 1 1 calc(25% - 8px); /* 4 per row */
+  min-width: 120px;
+  min-height: 90px;
+  max-height: 150px;
+  background-color: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
 
-      .status-ring {
-        position: absolute;
-        top: 8px;
-        left: 8px;
-        width: 18px;
-        height: 18px;
-        border: 3px solid transparent;
-        border-radius: 50%;
-        transition: border-color 0.2s;
-
-        &.speaking {
-          border-color: $primary-color;
-        }
-      }
-    }
+  video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
-  .controls {
+  .status-ring {
     position: absolute;
-    bottom: 20px;
-    left: 20px;
-    display: flex;
-    gap: 10px;
+    top: 4px;
+    left: 4px;
+    z-index: 10;
+    width: 16px;
+    height: 16px;
+    border: 3px solid transparent;
+    border-radius: 50%;
 
-    button {
-      background-color: $control-bg;
-      border: none;
-      padding: 8px 12px;
-      border-radius: $border-radius;
-      cursor: pointer;
-      font-weight: bold;
-
-      &:hover {
-        background-color: darken($control-bg, 10%);
-      }
+    &.speaking {
+      border-color: #4caf50;
     }
   }
+}
 
-  .chat-sidebar {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    border-left: 1px solid #ccc;
-    background-color: $sidebar-bg;
-    padding: 15px;
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px;
+  background-color: #1a1a1a;
 
-    h3 {
-      margin-bottom: 10px;
-      font-size: 1.2rem;
-      text-align: center;
-    }
+  button {
+    background-color: #424242;
+    border: none;
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 16px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.2s;
 
-    .messages {
-      flex: 1;
-      overflow-y: auto;
-      margin-bottom: 10px;
-
-      .message {
-        padding: 8px 12px;
-        margin-bottom: 5px;
-        border-radius: $border-radius;
-        background-color: lighten($primary-color, 40%);
-      }
-    }
-
-    input {
-      padding: 10px;
-      border-radius: $border-radius;
-      border: 1px solid #ccc;
-      width: 100%;
-      font-size: 1rem;
+    &:hover {
+      background-color: #555;
     }
   }
 }

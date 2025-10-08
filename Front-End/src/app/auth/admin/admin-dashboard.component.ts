@@ -4,6 +4,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService, User, Group } from './admin.service';
 
+interface Settings {
+  theme: 'light' | 'dark';
+  emailNotifications: boolean;
+  defaultUserRole: string;
+}
+
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
@@ -21,15 +27,13 @@ export class AdminDashboardComponent implements OnInit {
   selectedUser: User | null = null;
   selectedGroup: Group | null = null;
 
-  // newUser now correctly uses roles array and groups
-  newUser: { username: string; email: string; password: string; roles: string[]; groups: string[] } = {
-    username: '',
-    email: '',
-    password: '',
-    roles: ['chat_user'], // default role
-    groups: []
+  settings: Settings = {
+    theme: 'light',
+    emailNotifications: true,
+    defaultUserRole: 'chat_user',
   };
 
+  newUser = { username: '', email: '', password: '', roles: ['chat_user'], groups: [] };
   newGroup = { name: '', adminId: '' };
 
   errorMessage = '';
@@ -41,30 +45,37 @@ export class AdminDashboardComponent implements OnInit {
   ngOnInit() {
     this.loadUsers();
     this.loadGroups();
+    this.loadSettings();
   }
 
   // ------------------ LOAD DATA ------------------
   loadUsers() {
     this.adminService.getUsers().subscribe({
-      next: (data) => this.users = data,
+      next: (data: User[]) => {
+        console.log('Loaded users:', data);
+        this.users = data;
+      },
       error: () => this.showError('Failed to load users')
     });
   }
 
   loadGroups() {
     this.adminService.getGroups().subscribe({
-      next: (data) => this.groups = data,
+      next: (data: Group[]) => this.groups = data,
       error: () => this.showError('Failed to load groups')
     });
   }
 
-  // ------------------ USERS ------------------
+  loadSettings() {
+    console.log('Settings loaded (mock)');
+  }
+
+  // ------------------ USER METHODS ------------------
   addUser() {
     if (!this.newUser.username || !this.newUser.email || !this.newUser.password) {
       return this.showError('Please fill all fields');
     }
 
-    // Build a proper User object
     const userToAdd: User & { password: string } = {
       username: this.newUser.username,
       email: this.newUser.email,
@@ -77,7 +88,6 @@ export class AdminDashboardComponent implements OnInit {
       next: (user: User) => {
         this.users.push(user);
         this.showSuccess(`${user.username} added`);
-        // Reset form
         this.newUser = { username: '', email: '', password: '', roles: ['chat_user'], groups: [] };
       },
       error: () => this.showError('Failed to add user')
@@ -89,7 +99,9 @@ export class AdminDashboardComponent implements OnInit {
     this.adminService.removeUser(user._id).subscribe({
       next: () => {
         this.users = this.users.filter(u => u._id !== user._id);
-        this.groups.forEach(g => g.members = g.members.filter(m => m._id !== user._id));
+        this.groups.forEach((g: Group) => {
+          g.users = (g.users || []).filter((m: User) => m._id !== user._id);
+        });
         this.showSuccess(`${user.username} removed`);
       },
       error: () => this.showError('Failed to remove user')
@@ -103,8 +115,9 @@ export class AdminDashboardComponent implements OnInit {
 
     this.adminService.updateUserRoles(user._id, roles).subscribe({
       next: (u: User) => {
-        user.roles = u.roles;
-        this.showSuccess(`${user.username} promoted to ${role}`);
+        const index = this.users.findIndex(us => us._id === u._id);
+        if (index > -1) this.users[index] = u;
+        this.showSuccess(`${u.username} promoted to ${role}`);
       },
       error: () => this.showError('Failed to promote user')
     });
@@ -115,15 +128,16 @@ export class AdminDashboardComponent implements OnInit {
     const roles = user.roles.filter(r => r !== role);
     this.adminService.updateUserRoles(user._id, roles).subscribe({
       next: (u: User) => {
-        user.roles = u.roles;
-        this.showSuccess(`${role} removed from ${user.username}`);
+        const index = this.users.findIndex(us => us._id === u._id);
+        if (index > -1) this.users[index] = u;
+        this.showSuccess(`${role} removed from ${u.username}`);
         this.selectedRole[user._id!] = '';
       },
       error: () => this.showError('Failed to remove role')
     });
   }
 
-  // ------------------ GROUPS ------------------
+  // ------------------ GROUP METHODS ------------------
   addGroup() {
     if (!this.newGroup.name) return this.showError('Please enter group name');
 
@@ -137,16 +151,48 @@ export class AdminDashboardComponent implements OnInit {
     });
   }
 
-  addUserToGroup(group: Group, userId: string) {
-    if (!group._id) return;
+  addUserToGroup(group: Group | null, userId: string | undefined) {
+    if (!group?._id || !userId) return; // exit if undefined
+
     this.adminService.addUserToGroup(group._id, userId).subscribe({
       next: (updatedGroup: Group) => {
         const index = this.groups.findIndex(g => g._id === updatedGroup._id);
-        if (index > -1) this.groups[index] = updatedGroup;
+        if (index > -1) this.groups[index] = { ...updatedGroup, users: updatedGroup.users || [] };
         this.showSuccess(`User added to ${updatedGroup.name}`);
       },
       error: () => this.showError('Failed to add user to group')
     });
+  }
+
+
+  deleteGroup(group: Group) {
+    if (!group._id) return;
+    if (!confirm(`Are you sure you want to delete group "${group.name}"?`)) return;
+
+    this.adminService.deleteGroup(group._id).subscribe({
+      next: () => {
+        this.groups = this.groups.filter(g => g._id !== group._id);
+        this.showSuccess(`Group "${group.name}" deleted successfully`);
+      },
+      error: () => this.showError('Failed to delete group')
+    });
+  }
+
+  // ------------------ SETTINGS ------------------
+  toggleTheme() {
+    this.settings.theme = this.settings.theme === 'light' ? 'dark' : 'light';
+    this.showSuccess(`Theme switched to ${this.settings.theme}`);
+  }
+
+  toggleEmailNotifications() {
+    this.settings.emailNotifications = !this.settings.emailNotifications;
+    const status = this.settings.emailNotifications ? 'enabled' : 'disabled';
+    this.showSuccess(`Email notifications ${status}`);
+  }
+
+  changeDefaultRole(role: string) {
+    this.settings.defaultUserRole = role;
+    this.showSuccess(`Default role set to ${role}`);
   }
 
   // ------------------ UTILITIES ------------------
@@ -155,14 +201,30 @@ export class AdminDashboardComponent implements OnInit {
   selectGroup(group: Group) { this.selectedGroup = group; }
 
   getUsernames(users: User[] | undefined): string {
-    return users?.map(u => u.username).join(', ') || 'None';
+    if (!users || users.length === 0) return 'No users found';
+    return users.map((u: User) => u.username).join(', ');
   }
 
-  showSuccess(msg: string) { this.successMessage = msg; setTimeout(() => this.successMessage = '', 3000); }
-  showError(msg: string) { this.errorMessage = msg; setTimeout(() => this.errorMessage = '', 3000); }
+  getUserGroups(user: User): string {
+    if (!user || !this.groups) return 'None';
+    const userGroups = this.groups.filter((g: Group) =>
+      g.users?.some((u: User) => u._id === user._id)
+    );
+    return userGroups.length ? userGroups.map((g: Group) => g.name).join(', ') : 'None';
+  }
+
+  showSuccess(msg: string) { this.successMessage = msg; this.errorMessage = ''; setTimeout(() => this.successMessage = '', 3000); }
+  showError(msg: string) { this.errorMessage = msg; this.successMessage = ''; setTimeout(() => this.errorMessage = '', 3000); }
 
   signOut() {
-    localStorage.clear();
+    localStorage.removeItem('id');
+    localStorage.removeItem('username');
+    localStorage.removeItem('email');
+    localStorage.removeItem('roles');
     this.router.navigate(['/login']);
   }
+
+  // ------------------ TRACK BY ------------------
+  trackByUserId(index: number, user: User) { return user._id; }
+  trackByGroupId(index: number, group: Group) { return group._id; }
 }

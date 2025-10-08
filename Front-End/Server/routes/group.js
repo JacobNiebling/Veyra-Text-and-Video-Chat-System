@@ -81,34 +81,31 @@ router.post('/:groupId/add-user', async (req, res) => {
 });
 
 // Delete channel
-router.post('/:groupId/delete-channel', async (req, res) => {
+router.delete('/:groupId', async (req, res) => {
+  const { groupId } = req.params;
   try {
-    const { groupId } = req.params;
-    const { channel } = req.body;
-
-    const group = await Group.findById(groupId);
-    if (!group) return res.status(404).json({ error: 'Group not found' });
-
-    group.channels = group.channels.filter(ch => ch !== channel);
-    await group.save();
-
-    res.json({ success: true, channels: group.channels });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to delete channel' });
-  }
-});
-
-// Delete group
-router.delete('/:id', async (req, res) => {
-  const { id } = req.params;
-  try {
-    await Group.findByIdAndDelete(id);
+    await Group.findByIdAndDelete(groupId);
     res.json({ success: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to delete group' });
   }
 });
+
+// Delete group
+router.delete('/:id', async (req, res) => {
+  try {
+    const group = await Group.findById(req.params.id);
+    if (!group) return res.status(404).json({ error: 'Group not found' });
+
+    await Group.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: 'Group deleted successfully' });
+  } catch (err) {
+    console.error('Delete error:', err);
+    res.status(500).json({ error: 'Failed to delete group' });
+  }
+});
+
+
 
 module.exports = router;
