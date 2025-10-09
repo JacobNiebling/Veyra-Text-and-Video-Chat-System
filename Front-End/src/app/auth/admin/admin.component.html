@@ -1,5 +1,6 @@
 <div class="admin-container" [ngClass]="settings?.theme || 'light'">
 
+  <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-header">Admin Dashboard</div>
     <ul class="nav-pages">
@@ -12,18 +13,24 @@
     <button class="sign-out" (click)="signOut()">Log out</button>
   </aside>
 
+  <!-- Main Content -->
   <main class="main-content">
+
+    <!-- Top Bar -->
     <div class="top-bar">
       <h1>{{ currentPage }}</h1>
     </div>
 
+    <!-- Notifications -->
     <div class="notifications">
       <div class="notification success" *ngIf="successMessage">{{ successMessage }}</div>
       <div class="notification error" *ngIf="errorMessage">{{ errorMessage }}</div>
     </div>
 
+    <!-- Users Page -->
     <div *ngIf="currentPage === 'Users'" class="users-page">
 
+      <!-- Add User Form -->
       <div class="card add-user-form">
         <h3>Add New User</h3>
         <div class="form-group">
@@ -35,10 +42,11 @@
             <option value="group_admin">Group Admin</option>
             <option value="super_admin">Super Admin</option>
           </select>
-          <button (click)="addUser()">Add User</button>
+          <button class="btn add" (click)="addUser()">Add User</button>
         </div>
       </div>
 
+      <!-- Users Table -->
       <div class="card users-table">
         <table>
           <thead>
@@ -50,21 +58,29 @@
               <th>Actions</th>
             </tr>
           </thead>
+
           <tbody *ngIf="users.length > 0; else noUsers">
-            <tr *ngFor="let user of users" (click)="selectUser(user)" [class.selected]="selectedUser === user">
-              <td>{{ user.username }}</td>
+            <tr *ngFor="let user of users"
+                (click)="selectUser(user)"
+                [class.selected]="selectedUser === user">
+
+              <td><strong>{{ user.username }}</strong></td>
               <td>{{ user.email }}</td>
 
               <td>
-                <span class="role-badge" *ngFor="let r of user.roles">{{ r }}</span>
-                <select [(ngModel)]="selectedRole[user._id]">
-                  <option value="" disabled selected>Remove role...</option>
-                  <option *ngFor="let r of user.roles" [value]="r">{{ r }}</option>
-                </select>
-                <button *ngIf="selectedRole[user._id]"
-                        (click)="downgradeUserRole(user, selectedRole[user._id]); $event.stopPropagation()">
-                  Remove
-                </button>
+                <div class="role-container">
+                  <span class="role-badge" *ngFor="let r of user.roles">{{ r }}</span>
+                  <div class="role-remove">
+                    <select [(ngModel)]="selectedRole[user._id]">
+                      <option value="" disabled selected>Remove role...</option>
+                      <option *ngFor="let r of user.roles" [value]="r">{{ r }}</option>
+                    </select>
+                    <button *ngIf="selectedRole[user._id]"
+                            (click)="downgradeUserRole(user, selectedRole[user._id]); $event.stopPropagation()">
+                      ✕
+                    </button>
+                  </div>
+                </div>
               </td>
 
               <td>
@@ -72,30 +88,36 @@
               </td>
 
               <td class="actions">
-                <button (click)="promoteUser(user, 'group_admin'); $event.stopPropagation()">Promote</button>
-                <button (click)="removeUser(user); $event.stopPropagation()">Remove</button>
+                <button class="btn promote"
+                        (click)="promoteUser(user, 'group_admin'); $event.stopPropagation()">Promote</button>
+                <button class="btn remove"
+                        (click)="removeUser(user); $event.stopPropagation()">Remove</button>
               </td>
             </tr>
           </tbody>
         </table>
+
         <ng-template #noUsers>
           <tr>
-            <td colspan="5">No users found.</td>
+            <td colspan="5" class="no-users">No users found.</td>
           </tr>
         </ng-template>
       </div>
     </div>
 
+    <!-- Groups Page -->
     <div *ngIf="currentPage === 'Groups'" class="groups-page">
 
+      <!-- Add Group -->
       <div class="card add-group">
         <h3>Add New Group</h3>
         <div class="form-group">
           <input placeholder="Group Name" [(ngModel)]="newGroup.name" />
-          <button (click)="addGroup()">Add Group</button>
+          <button class="btn add" (click)="addGroup()">Add Group</button>
         </div>
       </div>
 
+      <!-- Groups Table -->
       <div class="card groups-table">
         <table>
           <thead>
@@ -105,6 +127,7 @@
               <th>Actions</th>
             </tr>
           </thead>
+
           <tbody *ngIf="groups.length > 0; else noGroups">
             <tr *ngFor="let group of groups"
                 [class.selected]="selectedGroup?._id === group._id"
@@ -112,48 +135,50 @@
               <td>{{ group.name }}</td>
               <td>{{ getUsernames(group.users) }}</td>
               <td>
-                <button (click)="deleteGroup(group)" class="delete-btn">Delete</button>
+                <button class="btn delete" (click)="deleteGroup(group); $event.stopPropagation()">Delete</button>
               </td>
             </tr>
           </tbody>
         </table>
+
         <ng-template #noGroups>
           <tr>
-            <td colspan="3">No groups found.</td>
+            <td colspan="3" class="no-users">No groups found.</td>
           </tr>
         </ng-template>
       </div>
 
+      <!-- Add User to Group -->
       <div class="card add-user-to-group" *ngIf="selectedGroup">
         <h4>Add User to {{ selectedGroup.name }}</h4>
-        <input #userId type="text" placeholder="Enter user ID or email" />
-        <button (click)="addUserToGroup(selectedGroup, userId.value); userId.value=''">
-          Add User
-        </button>
+        <div class="form-group">
+          <input #userId type="text" placeholder="Enter user ID or email" />
+          <button class="btn add" (click)="addUserToGroup(selectedGroup, userId.value); userId.value=''">Add User</button>
+        </div>
       </div>
     </div>
 
+    <!-- Settings Page -->
     <div *ngIf="currentPage === 'Settings'" class="settings-page">
       <h2>Website Settings</h2>
 
       <div class="settings-item">
         <label>Theme:</label>
-        <button (click)="toggleTheme()">
+        <button class="btn toggle" (click)="toggleTheme()">
           {{ settings?.theme === 'light' ? 'Switch to Dark' : 'Switch to Light' }}
         </button>
       </div>
 
       <div class="settings-item">
         <label>Email Notifications:</label>
-        <button (click)="toggleEmailNotifications()">
+        <button class="btn toggle" (click)="toggleEmailNotifications()">
           {{ settings?.emailNotifications ? 'Disable' : 'Enable' }}
         </button>
       </div>
 
       <div class="settings-item">
         <label>Default Role for New Users:</label>
-        <select [(ngModel)]="settings.defaultUserRole"
-                (change)="changeDefaultRole(settings.defaultUserRole)">
+        <select [(ngModel)]="settings.defaultUserRole" (change)="changeDefaultRole(settings.defaultUserRole)">
           <option value="chat_user">Chat User</option>
           <option value="group_admin">Group Admin</option>
           <option value="super_admin">Super Admin</option>
@@ -162,7 +187,7 @@
 
       <div class="settings-item">
         <label>Account Management:</label>
-        <button (click)="showSuccess('Admin account settings would open here')">
+        <button class="btn toggle" (click)="showSuccess('Admin account settings would open here')">
           Manage Admin Account
         </button>
       </div>

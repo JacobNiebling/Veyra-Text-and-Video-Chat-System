@@ -1,14 +1,36 @@
-<div class="video-chat-container">
-  <div class="video-grid" #videoGrid>
-    <div class="participants">
-      <div class="video-wrapper" *ngFor="let p of participants">
-        <video autoplay playsinline></video>
-        <div class="status-ring" [class.speaking]="p.speaking"></div>
-      </div>
+<div class="video-chat-wrapper">
+
+  <ng-container>
+
+    <div class="local-video-box">
+      <video #localVideo muted autoplay class="local-stream-video"></video>
     </div>
+
+    <hr>
+
+    <h3>Active Participants (Room: {{ groupId }})</h3>
+
+    <div #remoteVideosContainer class="remote-videos-grid">
+    </div>
+
+  </ng-container>
+
+
+  <div class="main-control-bar">
+
+    <button
+      (click)="toggleAudioMute()"
+      [class.is-muted]="isMuted"
+      class="action-button">
+      {{ isMuted ? 'Unmute' : 'Mute' }}
+    </button>
+
+    <button
+      (click)="endCall()"
+      class="action-button hangup-button">
+      End Call
+    </button>
+
   </div>
 
-  <div class="controls">
-    <button (click)="toggleMute()">{{ muted ? 'Unmute' : 'Mute' }}</button>
-  </div>
 </div>

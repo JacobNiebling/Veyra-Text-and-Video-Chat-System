@@ -26,9 +26,7 @@ export class AdminService {
 
   // USERS
   getUsers(): Observable<User[]> {
-    return this.http.get<{ users: User[] }>(`${this.apiUrl}/users`).pipe(
-      map(response => response.users || [])
-    );
+    return this.http.get<User[]>(`${this.apiUrl}/users`);
   }
 
   addUser(user: User & { password: string }): Observable<User> {
@@ -60,3 +58,4 @@ export class AdminService {
     return this.http.patch<Group>(`${this.apiUrl}/groups/${groupId}/addUser`, { userId });
   }
 }
+

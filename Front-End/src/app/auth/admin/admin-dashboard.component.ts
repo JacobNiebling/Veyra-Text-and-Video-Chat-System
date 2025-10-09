@@ -61,10 +61,16 @@ export class AdminDashboardComponent implements OnInit {
 
   loadGroups() {
     this.adminService.getGroups().subscribe({
-      next: (data: Group[]) => this.groups = data,
+      next: (data: Group[]) => {
+        // Force users array
+        this.groups = data.map(g => ({ ...g, users: g.users || [] }));
+        console.log('Loaded groups:', this.groups);
+      },
       error: () => this.showError('Failed to load groups')
     });
   }
+
+
 
   loadSettings() {
     console.log('Settings loaded (mock)');
@@ -200,10 +206,19 @@ export class AdminDashboardComponent implements OnInit {
   selectUser(user: User) { this.selectedUser = user; }
   selectGroup(group: Group) { this.selectedGroup = group; }
 
-  getUsernames(users: User[] | undefined): string {
-    if (!users || users.length === 0) return 'No users found';
-    return users.map((u: User) => u.username).join(', ');
+  getUsernames(users: (User | string)[] | undefined): string {
+    if (!users || users.length === 0) return 'No members found';
+
+    // If users are objects with username, map them
+    if (typeof users[0] === 'object') {
+      return (users as User[]).map(u => u.username).join(', ');
+    }
+
+    // If users are just IDs (strings), show count
+    return `Members: ${users.length}`;
   }
+
+
 
   getUserGroups(user: User): string {
     if (!user || !this.groups) return 'None';

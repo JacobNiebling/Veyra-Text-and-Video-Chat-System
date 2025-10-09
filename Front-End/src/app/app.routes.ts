@@ -12,6 +12,6 @@ export const routes: Routes = [
   { path: 'chat', component: ChatComponent },
   { path: 'admin-dashboard', component: AdminDashboardComponent },
   { path: 'group-dashboard', component: GroupDashboardComponent },
-  { path: 'video-chat/:groupId', component: VideoChatComponent },
+  { path: 'video_chat/:groupId', component: VideoChatComponent },
   { path: '**', redirectTo: '' }
 ];

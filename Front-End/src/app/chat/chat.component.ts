@@ -37,12 +37,16 @@ export class ChatComponent implements OnInit, OnDestroy {
   channels: { [groupId: string]: string[] } = {};
   currentGroup: Group | null = null;
   currentChannel = '';
-  messages: Message[] = [];
+
+  // Store messages per group and channel
+  messages: { [groupId: string]: { [channel: string]: Message[] } } = {};
+  messagesView: Message[] = [];
+
   newMessage = '';
   selectedFile: File | null = null;
 
-  errorMessage = ''; // user-visible errors
-  debugLogs: string[] = []; // internal debug
+  errorMessage = '';
+  debugLogs: string[] = [];
 
   videoCallStarted = false;
   socket!: Socket;
@@ -62,6 +66,7 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.logDebug('ngOnDestroy');
+    this.leaveChannel();
     if (this.videoCallStarted) {
       this.peer.destroy();
       this.socket.disconnect();
@@ -69,15 +74,12 @@ export class ChatComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ---------------- Debug ----------------
   logDebug(msg: string) {
     console.log('[Chat Debug]', msg);
     this.debugLogs.push(msg);
   }
 
-  // ---------------- User functions ----------------
   loadUserFromLocalStorage() {
-    this.logDebug('Loading user from localStorage');
     const userId = localStorage.getItem('userId');
     const username = localStorage.getItem('username');
     const avatar = localStorage.getItem('avatar');
@@ -98,128 +100,154 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   refreshUserGroups() {
-    this.logDebug('Refreshing groups...');
     this.loadUserGroups();
   }
 
   loadUserGroups() {
-    if (!this.userId) {
-      this.errorMessage = 'Cannot load groups: no user ID';
-      console.error(this.errorMessage);
-      return;
-    }
+    if (!this.userId) return;
 
-    this.logDebug(`Fetching groups for userId=${this.userId}`);
     this.http.get<Group[]>(`${this.API_BASE_URL}/groups/user/${this.userId}`).subscribe({
       next: (res) => {
-        if (!res || res.length === 0) {
-          this.errorMessage = 'No groups found for this user';
-          console.warn(this.errorMessage);
-        } else {
-          this.errorMessage = '';
-        }
-
         this.groups = res || [];
         this.groups.forEach(g => {
           this.channels[g._id] = g.channels?.length ? g.channels : ['general', 'random', 'media'];
-          this.logDebug(`Loaded group: ${g.name}, channels: ${this.channels[g._id].join(', ')}`);
         });
 
         if (this.groups.length > 0) this.selectGroup(this.groups[0]);
       },
       error: (err) => {
-        this.errorMessage = 'Failed to load groups from server';
-        console.error(this.errorMessage, err);
-        this.logDebug(`Error loading groups: ${JSON.stringify(err)}`);
+        console.error('Failed to load groups', err);
       }
     });
   }
 
   signOut() {
-    this.logDebug('Signing out');
     localStorage.clear();
     this.router.navigate(['/login']);
   }
 
-  // ---------------- Socket ----------------
   initSocket() {
-    this.logDebug('Initializing Socket.io');
     this.socket = io('http://localhost:3000');
+
     this.socket.on('connect', () => this.logDebug('Socket connected: ' + this.socket.id));
     this.socket.on('connect_error', (err) => this.logDebug('Socket connection error: ' + JSON.stringify(err)));
+
+    this.socket.on('userJoinedChannel', ({ username, channel, group }: any) => {
+      const sysMsg: Message = {
+        sender: 'System',
+        text: `${username} joined channel ${channel}`,
+        timestamp: new Date(),
+        system: true
+      };
+      this.addMessageToChannel(group, channel, sysMsg);
+    });
+
+    this.socket.on('userLeftChannel', ({ username, channel, group }: any) => {
+      const sysMsg: Message = {
+        sender: 'System',
+        text: `${username} left channel ${channel}`,
+        timestamp: new Date(),
+        system: true
+      };
+      this.addMessageToChannel(group, channel, sysMsg);
+    });
+
+    this.socket.on('receiveMessage', (msg: Message & { group: string; channel: string }) => {
+      this.addMessageToChannel(msg.group, msg.channel, msg);
+    });
   }
 
-  // ---------------- Chat functions ----------------
+  private addMessageToChannel(groupId: string, channel: string, msg: Message) {
+    if (!this.messages[groupId]) this.messages[groupId] = {};
+    if (!this.messages[groupId][channel]) this.messages[groupId][channel] = [];
+
+    // Prevent duplicates
+    const exists = this.messages[groupId][channel].some(
+      m => m.timestamp === msg.timestamp && m.sender === msg.sender
+    );
+    if (!exists) this.messages[groupId][channel].push(msg);
+
+    if (this.currentGroup?._id === groupId && this.currentChannel === channel) {
+      this.messagesView = [...this.messages[groupId][channel]];
+    }
+  }
+
   selectGroup(group: Group) {
-    this.logDebug(`Selecting group: ${group.name}`);
+    this.leaveChannel();
     this.currentGroup = group;
     this.currentChannel = group.channels?.[0] || this.channels[group._id]?.[0] || '';
-    this.messages = [];
+    this.selectChannel(this.currentChannel);
   }
 
   selectChannel(ch: string) {
     if (!this.currentGroup) return;
-    this.logDebug(`Selecting channel: ${ch} in group ${this.currentGroup.name}`);
+    this.leaveChannel();
     this.currentChannel = ch;
-    this.messages = [];
 
-    this.socket?.emit('join', {
-      group: this.currentGroup._id,
-      channel: this.currentChannel,
-      username: this.username
-    });
+    const groupId = this.currentGroup._id;
+    if (!this.messages[groupId]) this.messages[groupId] = {};
+    if (!this.messages[groupId][ch]) this.messages[groupId][ch] = [];
 
-    this.socket?.once('previousMessages', (msgs: Message[]) => {
-      this.logDebug(`Received ${msgs?.length || 0} previous messages`);
-      this.messages = msgs || [];
+    // Display cached messages
+    this.messagesView = this.messages[groupId][ch];
+
+    // Join channel
+    this.socket.emit('join', { group: groupId, channel: ch, username: this.username });
+
+    // Fetch previous messages
+    this.socket.emit('getChannelHistory', { group: groupId, channel: ch });
+
+    this.socket.once('channelHistory', (msgs: Message[]) => {
+      this.messages[groupId][ch] = msgs.map(msg => ({ ...msg, system: msg.system || false }));
+      if (this.currentGroup?._id === groupId && this.currentChannel === ch) {
+        this.messagesView = [...this.messages[groupId][ch]];
+      }
     });
   }
+
+  leaveChannel() {
+    if (!this.currentGroup || !this.currentChannel) return;
+    this.socket.emit('leave', { group: this.currentGroup._id, channel: this.currentChannel, username: this.username });
+  }
+
+  startCall(groupId: string) {
+    this.router.navigate(['/video_chat', groupId]);
+  }
+
 
   async sendMessage() {
     if (!this.newMessage && !this.selectedFile) return;
     if (!this.currentGroup || !this.currentChannel) return;
 
     let imageUrl: string | null = null;
-
     if (this.selectedFile) {
       const formData = new FormData();
       formData.append('file', this.selectedFile);
-
       try {
         const uploadRes: any = await this.http.post(`${this.API_BASE_URL}/upload`, formData).toPromise();
         imageUrl = `http://localhost:3000${uploadRes.path}`;
-        this.logDebug('File uploaded: ' + imageUrl);
       } catch (err) {
-        console.error('Upload failed:', err);
-        this.logDebug('Upload failed: ' + JSON.stringify(err));
+        console.error('Upload failed', err);
       }
     }
 
-    const msg: Message = {
-      sender: this.username,
-      text: this.newMessage || undefined,
-      image: imageUrl || undefined,
-      timestamp: new Date()
-    };
-
-    this.socket?.emit('sendMessage', {
+    const payload = {
       group: this.currentGroup._id,
       channel: this.currentChannel,
       sender: this.username,
-      text: this.newMessage,
-      image: imageUrl
-    });
+      text: this.newMessage || undefined,
+      image: imageUrl || undefined
+    };
 
-    this.messages.push(msg);
+    this.socket.emit('sendMessage', payload);
+
     this.newMessage = '';
     this.selectedFile = null;
   }
 
   onFileSelected(event: any) {
     this.selectedFile = event.target.files[0];
-    this.logDebug(`File selected: ${this.selectedFile?.name}`);
   }
-
   // ---------------- Video Call ----------------
   async startVideoCall() {
     if (!this.currentGroup || !this.currentChannel) {

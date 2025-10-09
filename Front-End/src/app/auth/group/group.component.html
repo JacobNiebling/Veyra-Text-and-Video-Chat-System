@@ -1,76 +1,76 @@
 <div class="group-admin-chat-app">
 
   <!-- Sidebar -->
-  <aside class="sidebar">
+<aside class="sidebar">
 
-    <!-- User Info -->
-    <div class="user-info">
-      <h3>{{ username || 'Guest' }}</h3>
-    </div>
+  <div class="user-info">
+    <img [src]="avatarUrl || 'default-avatar.png'" alt="Avatar" class="avatar">
+    <h3>{{ username || 'Guest' }}</h3>
+    <button class="sign-out" (click)="logout()">Log out</button>
+  </div>
 
-    <!-- Groups -->
-    <div class="groups-tabs">
-      <h4>Groups</h4>
+  <div class="groups">
+    <h4>Groups</h4>
 
-      <div class="tabs-container" *ngIf="groups?.length">
-        <div *ngFor="let group of groups"
-             class="group-tab"
-             [class.active]="currentGroup?._id === group?._id">
-
-          <!-- Group Header -->
-          <div class="group-header" (click)="selectGroup(group)">
-            {{ group?.name }}
+    <ul *ngIf="groups?.length">
+      <li *ngFor="let group of groups"
+          [class.active]="currentGroup?._id === group._id"
+          (click)="selectGroup(group)">
+        <div class="group-item">
+          <div class="avatar">{{ group.name?.charAt(0) || '?' }}</div>
+          <div class="group-details">
+            <span class="group-name">{{ group.name }}</span>
+            <br />
+            <small class="group-admin">
+              Admin: {{ group?.createdBy?.username || 'Unknown' }}
+            </small>
           </div>
-
-          <!-- Channels List -->
-          <ul class="channels-list">
-            <li *ngFor="let ch of group?.channels"
-                [class.active]="currentGroup?._id === group?._id && currentChannel === ch"
-                (click)="selectChannel(ch, $event)">
-              {{ ch }}
-            </li>
-          </ul>
-
-          <!-- Add Channel (only visible for selected group & admin) -->
-          <div *ngIf="currentGroup?._id === group?._id && isAdminOfGroup(group)" class="add-channel">
-            <input #newChannelName type="text" placeholder="New channel name">
-            <button (click)="addChannel(newChannelName.value); newChannelName.value=''">
-              Add Channel
-            </button>
-          </div>
-
         </div>
-      </div>
+      </li>
+    </ul>
 
-      <!-- Add Group -->
-      <div class="add-group">
-        <input #newGroupName type="text" placeholder="New group name">
-        <button (click)="addGroup(newGroupName.value); newGroupName.value=''">Add Group</button>
-      </div>
+    <div class="add-group">
+      <input #newGroupName type="text" placeholder="New group name">
+      <button (click)="addGroup(newGroupName.value); newGroupName.value=''">Add Group</button>
     </div>
+    <button (click)="refreshUserGroups()">Refresh Groups</button>
+  </div>
 
-    <!-- Add Users -->
-    <div *ngIf="currentGroup && isAdminOfGroup(currentGroup)">
-      <h4>Add User to {{ currentGroup?.name }}</h4>
-      <input #userEmail type="email" placeholder="User email" />
-      <button (click)="addUserToGroup(userEmail.value); userEmail.value=''">Add User</button>
+  <div class="channels" *ngIf="currentGroup">
+    <h4>Channels in {{ currentGroup?.name }}</h4>
 
-      <!-- Current Members -->
-      <div class="group-users" *ngIf="currentGroup?.users?.length">
-        <h5>Current Members:</h5>
-        <ul>
-          <li *ngFor="let user of currentGroup?.users">
-            {{ user?.username }} ({{ user?.email }})
-          </li>
-        </ul>
-      </div>
+    <ul class="channels-list">
+      <li *ngFor="let ch of currentGroup?.channels"
+          [class.active]="currentChannel === ch"
+          (click)="selectChannel(ch, $event)">
+        # {{ ch }}
+      </li>
+    </ul>
+
+    <div *ngIf="isAdminOfGroup(currentGroup)" class="add-channel">
+      <input #newChannelName type="text" placeholder="New channel name">
+      <button (click)="addChannel(newChannelName.value); newChannelName.value=''">
+        Add Channel
+      </button>
     </div>
+  </div>
 
-    <!-- Logout -->
-    <div class="sidebar-footer">
-      <button class="sign-out" (click)="logout()">Log out</button>
+  <div class="group-management" *ngIf="currentGroup && isAdminOfGroup(currentGroup)">
+    <h4>Add User to {{ currentGroup?.name }}</h4>
+    <input #userEmail type="email" placeholder="User email" />
+    <button (click)="addUserToGroup(userEmail.value); userEmail.value=''">Add User</button>
+
+    <div class="group-users" *ngIf="currentGroup?.users?.length">
+      <h5>Current Members:</h5>
+      <ul>
+        <li *ngFor="let user of currentGroup?.users">
+          {{ user?.username }} ({{ user?.email }})
+        </li>
+      </ul>
     </div>
-  </aside>
+  </div>
+
+</aside>
 
   <!-- Main Chat Area -->
   <main class="chat-area" *ngIf="currentGroup">

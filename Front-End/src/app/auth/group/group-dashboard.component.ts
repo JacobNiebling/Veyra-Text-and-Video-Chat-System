@@ -123,7 +123,7 @@ export class GroupDashboardComponent implements OnInit {
   }
 
   startCall(groupId: string) {
-    this.router.navigate(['/video-chat', groupId]);
+    this.router.navigate(['/video_chat', groupId]);
   }
 
   sendMessage() {
@@ -248,26 +248,38 @@ export class GroupDashboardComponent implements OnInit {
     this.joinChannel(this.currentGroup.name, channel);
   }
 
-  private initSocket() {
-    if (this.socket) return;
-    this.socket = io('http://localhost:3000');
+private initSocket() {
+  if (this.socket) return;
 
-    this.socket.on('previousMessages', (msgs: Message[]) => {
-      if (!this.currentGroup || !this.currentChannel) return;
-      const groupId = this.currentGroup._id;
-      if (!this.messages[groupId]) this.messages[groupId] = {};
-      this.messages[groupId][this.currentChannel] = msgs || [];
-    });
+  this.socket = io('http://localhost:3000');
 
-    this.socket.on('receiveMessage', (msg: Message) => {
-      if (!msg || !this.currentGroup || !this.currentChannel) return;
-      if (msg.group === this.currentGroup.name && msg.channel === this.currentChannel) {
-        const groupId = this.currentGroup._id;
-        if (!this.messages[groupId][this.currentChannel!]) this.messages[groupId][this.currentChannel!] = [];
-        this.messages[groupId][this.currentChannel!].push(msg);
-      }
-    });
-  }
+  // Only listen once for previous messages
+  this.socket.once('previousMessages', (msgs: Message[]) => {
+    if (!this.currentGroup || !this.currentChannel) return;
+    const groupId = this.currentGroup._id;
+    if (!this.messages[groupId]) this.messages[groupId] = {};
+    this.messages[groupId][this.currentChannel] = msgs || [];
+  });
+
+  // Only listen once for incoming messages globally
+  this.socket.off('receiveMessage'); // remove duplicate listeners
+  this.socket.on('receiveMessage', (msg: Message) => {
+    if (!msg || !this.currentGroup || !this.currentChannel) return;
+
+    const groupId = this.currentGroup._id;
+    const channel = this.currentChannel;
+
+    // Ensure group and channel objects exist
+    if (!this.messages[groupId]) this.messages[groupId] = {};
+    if (!this.messages[groupId][channel]) this.messages[groupId][channel] = [];
+
+    // Only push if the message belongs to this group/channel
+    if (msg.group === this.currentGroup.name && msg.channel === channel) {
+      this.messages[groupId][channel].push(msg);
+    }
+  });
+}
+
 
   toggleMembersPanel() {
     this.showMembersPanel = !this.showMembersPanel;
