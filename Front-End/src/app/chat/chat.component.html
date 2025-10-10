@@ -13,7 +13,6 @@
     <!-- Groups -->
     <div class="groups">
       <h4>Groups</h4>
-
       <ul>
         <li *ngFor="let group of groups"
             [class.active]="currentGroup?._id === group._id"
@@ -24,13 +23,12 @@
               <span class="group-name">{{ group.name }}</span>
               <br />
               <small class="group-admin">
-                Admin: {{ currentGroup?.createdBy?.username || 'Unknown' }}
+                Admin: {{ group.createdBy?.username || 'Unknown' }}
               </small>
             </div>
           </div>
         </li>
       </ul>
-
       <button (click)="refreshUserGroups()">Refresh Groups</button>
     </div>
 
@@ -50,42 +48,36 @@
 
   <!-- Chat Area -->
   <main class="chat-area" *ngIf="currentGroup && currentChannel; else noChannelSelected">
-
     <div class="chat-header">
-      <div>
-        <h2>{{ currentGroup.name }} / {{ currentChannel }}</h2>
-        <small>Admin: {{ group.admins?.[0]?.username || 'Unknown' }}</small>
-      </div>
+      <h2>{{ currentGroup.name }} / {{ currentChannel }}</h2>
         <button class="video-btn" (click)="startCall(currentGroup?._id)">Start Call</button>
     </div>
 
-    <div class="messages">
-      <div *ngFor="let msg of messages" class="message" [ngClass]="{ 'system-message': msg.system }">
-        <div *ngIf="!msg.system" class="avatar">{{ msg.sender.charAt(0) }}</div>
-
-        <div class="message-content">
-          <!-- System notifications -->
-          <div *ngIf="msg.system" class="system-text">
-            <em>{{ msg.text }}</em>
+    <div class="messages" #messagesContainer>
+      <ng-container *ngFor="let msg of messagesView; let i = index">
+        <div class="message" [class.system]="msg.system">
+          <div class="avatar" *ngIf="!msg.system">{{ msg.sender.charAt(0) }}</div>
+          <div class="message-content">
+            <div class="message-header" *ngIf="!msg.system">
+              <span class="sender">{{ msg.sender }}</span>
+              <span class="datetime">
+                {{ msg.timestamp | date:'dd/MM/yyyy' }} {{ msg.timestamp | date:'shortTime' }}
+              </span>
+            </div>
+            <div class="text">{{ msg.text }}</div>
+            <img *ngIf="msg.image" [src]="msg.image" class="chat-image" />
           </div>
-
-          <!-- Normal messages -->
-          <ng-container *ngIf="!msg.system">
-            <div class="sender">{{ msg.sender }}</div>
-            <div class="text" *ngIf="msg.text">{{ msg.text }}</div>
-            <img *ngIf="msg.image" [src]="msg.image" class="chat-image">
-            <div class="time">{{ msg.timestamp | date:'shortTime' }}</div>
-          </ng-container>
         </div>
-      </div>
+      </ng-container>
     </div>
 
+
+
     <div class="message-input">
-      <input [(ngModel)]="newMessage" placeholder="Type a message..." />
+      <input [(ngModel)]="newMessage" placeholder="Type a message..." (keyup.enter)="sendMessage()" />
       <input type="file" (change)="onFileSelected($event)" />
       <button (click)="sendMessage()">Send</button>
     </div>
-
   </main>
 
   <!-- No group/channel selected -->

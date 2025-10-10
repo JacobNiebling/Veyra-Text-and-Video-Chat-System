@@ -1,134 +1,135 @@
 <div class="group-admin-chat-app">
+  <aside class="sidebar">
+    <!-- User Info -->
+    <div class="user-info">
+      <img [src]="avatar || 'avatar.png'" alt="Avatar" class="avatar">
+      <h3>{{ username || 'Guest' }}</h3>
+      <button class="sign-out" (click)="logout()">Log out</button>
+    </div>
 
-  <!-- Sidebar -->
-<aside class="sidebar">
-
-  <div class="user-info">
-    <img [src]="avatarUrl || 'default-avatar.png'" alt="Avatar" class="avatar">
-    <h3>{{ username || 'Guest' }}</h3>
-    <button class="sign-out" (click)="logout()">Log out</button>
-  </div>
-
-  <div class="groups">
-    <h4>Groups</h4>
-
-    <ul *ngIf="groups?.length">
-      <li *ngFor="let group of groups"
-          [class.active]="currentGroup?._id === group._id"
-          (click)="selectGroup(group)">
-        <div class="group-item">
-          <div class="avatar">{{ group.name?.charAt(0) || '?' }}</div>
-          <div class="group-details">
-            <span class="group-name">{{ group.name }}</span>
-            <br />
-            <small class="group-admin">
-              Admin: {{ group?.createdBy?.username || 'Unknown' }}
-            </small>
+    <!-- Groups -->
+    <div class="groups">
+      <h4>Groups</h4>
+      <ul *ngIf="groups?.length">
+        <li *ngFor="let group of groups"
+            [class.active]="currentGroup?._id === group._id"
+            (click)="selectGroup(group)">
+          <div class="group-item">
+            <div class="avatar">{{ group.name?.charAt(0) || '?' }}</div>
+            <div class="group-details">
+              <span class="group-name">{{ group.name }}</span>
+              <br />
+              <small class="group-admin">
+                Admin: {{ group?.createdBy?.username || 'Unknown' }}
+              </small>
+            </div>
           </div>
-        </div>
-      </li>
-    </ul>
-
-    <div class="add-group">
-      <input #newGroupName type="text" placeholder="New group name">
-      <button (click)="addGroup(newGroupName.value); newGroupName.value=''">Add Group</button>
-    </div>
-    <button (click)="refreshUserGroups()">Refresh Groups</button>
-  </div>
-
-  <div class="channels" *ngIf="currentGroup">
-    <h4>Channels in {{ currentGroup?.name }}</h4>
-
-    <ul class="channels-list">
-      <li *ngFor="let ch of currentGroup?.channels"
-          [class.active]="currentChannel === ch"
-          (click)="selectChannel(ch, $event)">
-        # {{ ch }}
-      </li>
-    </ul>
-
-    <div *ngIf="isAdminOfGroup(currentGroup)" class="add-channel">
-      <input #newChannelName type="text" placeholder="New channel name">
-      <button (click)="addChannel(newChannelName.value); newChannelName.value=''">
-        Add Channel
-      </button>
-    </div>
-  </div>
-
-  <div class="group-management" *ngIf="currentGroup && isAdminOfGroup(currentGroup)">
-    <h4>Add User to {{ currentGroup?.name }}</h4>
-    <input #userEmail type="email" placeholder="User email" />
-    <button (click)="addUserToGroup(userEmail.value); userEmail.value=''">Add User</button>
-
-    <div class="group-users" *ngIf="currentGroup?.users?.length">
-      <h5>Current Members:</h5>
-      <ul>
-        <li *ngFor="let user of currentGroup?.users">
-          {{ user?.username }} ({{ user?.email }})
         </li>
       </ul>
+
+      <!-- Add Group -->
+      <div class="add-group">
+        <input #newGroupName type="text" placeholder="New group name">
+        <button (click)="addGroup(newGroupName.value); newGroupName.value=''">Add Group</button>
+      </div>
+      <button (click)="refreshUserGroups()">Refresh Groups</button>
     </div>
-  </div>
 
-</aside>
+    <!-- Channels -->
+    <div class="channels" *ngIf="currentGroup">
+      <h4>Channels in {{ currentGroup?.name }}</h4>
+      <ul class="channels-list">
+        <li *ngFor="let ch of currentGroup?.channels"
+            [class.active]="currentChannel === ch"
+            (click)="selectChannel(ch, $event)">
+          # {{ ch }}
+          <button *ngIf="isAdminOfGroup(currentGroup)"
+                  (click)="removeChannel(ch); $event.stopPropagation()"
+                  class="delete-channel-btn">✕</button>
+        </li>
+      </ul>
 
-  <!-- Main Chat Area -->
+      <div *ngIf="isAdminOfGroup(currentGroup)" class="add-channel">
+        <input #newChannelName type="text" placeholder="New channel name">
+        <button (click)="addChannel(newChannelName.value); newChannelName.value=''">Add Channel</button>
+      </div>
+    </div>
+
+    <!-- Sidebar Group Management Panel -->
+    <div class="group-management" *ngIf="currentGroup && isAdminOfGroup(currentGroup)">
+      <h4>Add User to {{ currentGroup?.name }}</h4>
+      <input #userEmail type="email" placeholder="User email" />
+      <button (click)="addUserToGroup(userEmail.value); userEmail.value=''">Add User</button>
+
+      <div class="group-users" *ngIf="currentGroup?.users?.length">
+        <h5>Current Members:</h5>
+        <ul>
+          <li *ngFor="let user of currentGroup?.users">
+            {{ user?.username }} ({{ user?.email }})
+            <!-- Remove button only for non-admins and not yourself -->
+            <button *ngIf="isAdminOfGroup(currentGroup) && !isAdmin(user) && user?._id !== userId"
+                    (click)="removeUserFromGroup(user?._id)">Remove</button>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </aside>
+
   <main class="chat-area" *ngIf="currentGroup">
     <div *ngIf="currentChannel; else noChannelSelected">
-
+      <!-- Chat Header -->
       <div class="chat-header">
         <h2>{{ currentGroup?.name }} - {{ currentChannel }}</h2>
         <button class="video-btn" (click)="startCall(currentGroup?._id)">Start Call</button>
         <button class="members-btn" (click)="toggleMembersPanel()">Members</button>
       </div>
 
-      <!-- Members Panel -->
+      <!-- Members Slide Panel -->
       <div class="members-panel-slide" [class.open]="showMembersPanel">
         <div class="panel-header">
           <h4>Group Members</h4>
           <button class="close-btn" (click)="toggleMembersPanel()">✕</button>
         </div>
 
-        <!-- Add User -->
         <div class="add-user">
           <input type="email" placeholder="User email" [(ngModel)]="newUserEmail" />
           <button (click)="addUserToGroup(newUserEmail)">Add</button>
         </div>
 
+        <!-- Admin List -->
         <div *ngIf="currentGroup?.admins?.length">
           <h5>Admins:</h5>
           <ul>
             <li *ngFor="let admin of currentGroup?.admins">
-              {{ admin?.username || 'Unknown' }} ({{ admin?.email || 'No email' }})
+              {{ admin || 'Unknown' }}
             </li>
           </ul>
         </div>
 
-        <!-- Current Users -->
+        <!-- Users List -->
         <ul class="user-list" *ngIf="currentGroup?.users?.length">
           <li *ngFor="let user of currentGroup?.users">
             {{ user?.username }} ({{ user?.email }})
-            <button *ngIf="isAdminOfGroup(currentGroup) && user?._id !== userId"
+            <button *ngIf="isAdminOfGroup(currentGroup) && !isAdmin(user) && user?._id !== userId"
                     (click)="removeUserFromGroup(user?._id)">Remove</button>
           </li>
         </ul>
       </div>
 
-      <div class="messages">
+      <!-- Messages -->
+      <div #messagesContainer class="messages">
         <ng-container *ngFor="let msg of messages[currentGroup?._id]?.[currentChannel]; let i = index">
           <div class="message"
-               [ngClass]="{'system': msg?.system, 'same-sender': !isNewMessageBlock(msg, messages[currentGroup?._id]?.[currentChannel][i-1])}">
+              [ngClass]="{'system': msg?.system, 'same-sender': !isNewMessageBlock(msg, messages[currentGroup?._id]?.[currentChannel][i-1])}">
 
-            <!-- Header only if new message block -->
             <div class="message-header" *ngIf="!msg?.system && isNewMessageBlock(msg, messages[currentGroup?._id]?.[currentChannel][i-1])">
-              <img class="avatar" [src]="msg?.avatar || '/uploads/avatar.png'" />
+              <img class="avatar" [src]="msg?.avatar || '/assets/avatar.png'" />
               <div class="sender-info">
                 <span class="sender">{{ msg?.sender }}</span>
                 <span class="timestamp">{{ msg?.timestamp | date:'shortDate' }} {{ msg?.timestamp | date:'shortTime' }}</span>
               </div>
             </div>
 
-            <!-- Content -->
             <div class="message-content">
               <p *ngIf="msg?.text" class="text">{{ msg.text }}</p>
               <div *ngIf="msg?.image" class="images">
@@ -139,6 +140,8 @@
         </ng-container>
       </div>
 
+
+      <!-- Message Input -->
       <div class="message-input">
         <input type="text" placeholder="Type a message..." [(ngModel)]="newMessage" (keyup.enter)="sendMessage()" />
         <input type="file" (change)="onFileSelected($event)" accept="image/*" />

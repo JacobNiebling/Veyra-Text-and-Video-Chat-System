@@ -175,6 +175,19 @@
         &:hover { background-color: #1669c1; }
       }
     }
+    .delete-channel-btn {
+      margin-left: 0.5rem;
+      background: transparent;
+      border: none;
+      color: red;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+
+    .delete-channel-btn:hover {
+      color: darkred;
+    }
 
     // Refresh Button (Added for completeness)
     > button {

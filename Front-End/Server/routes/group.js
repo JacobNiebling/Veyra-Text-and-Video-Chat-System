@@ -8,6 +8,7 @@ router.post('/', async (req, res) => {
   try {
     const { name, creatorEmail } = req.body;
     if (!name) return res.status(400).json({ error: 'Missing group name' });
+    if (!creatorEmail) return res.status(400).json({ error: 'Missing creator email' });
 
     const user = await User.findOne({ email: creatorEmail });
     if (!user) return res.status(404).json({ error: 'Creator not found' });
@@ -16,19 +17,20 @@ router.post('/', async (req, res) => {
       name,
       channels: ['General'],
       users: [user._id],
-      admins: [user._id]
+      admins: [user._id],
+      createdBy: user._id
     });
 
     await newGroup.save();
     await newGroup.populate('users', 'username email');
 
     res.status(201).json(newGroup);
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to create group' });
   }
 });
+
 
 // Add channel
 router.post('/:groupId/add-channel', async (req, res) => {

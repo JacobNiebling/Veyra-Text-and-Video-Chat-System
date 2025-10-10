@@ -170,13 +170,6 @@
       </div>
 
       <div class="settings-item">
-        <label>Email Notifications:</label>
-        <button class="btn toggle" (click)="toggleEmailNotifications()">
-          {{ settings?.emailNotifications ? 'Disable' : 'Enable' }}
-        </button>
-      </div>
-
-      <div class="settings-item">
         <label>Default Role for New Users:</label>
         <select [(ngModel)]="settings.defaultUserRole" (change)="changeDefaultRole(settings.defaultUserRole)">
           <option value="chat_user">Chat User</option>
@@ -184,14 +177,6 @@
           <option value="super_admin">Super Admin</option>
         </select>
       </div>
-
-      <div class="settings-item">
-        <label>Account Management:</label>
-        <button class="btn toggle" (click)="showSuccess('Admin account settings would open here')">
-          Manage Admin Account
-        </button>
-      </div>
     </div>
-
   </main>
 </div>

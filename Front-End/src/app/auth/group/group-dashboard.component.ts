@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ElementRef, ViewChild, AfterViewChecked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -33,7 +33,9 @@ interface Message {
   templateUrl: './group.component.html',
   styleUrls: ['./group.component.scss']
 })
-export class GroupDashboardComponent implements OnInit {
+export class GroupDashboardComponent implements OnInit, AfterViewChecked {
+  @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
+
   username = localStorage.getItem('username') || 'Admin';
   userId = localStorage.getItem('id') || '';
   avatar = localStorage.getItem('avatar') || '';
@@ -70,6 +72,21 @@ export class GroupDashboardComponent implements OnInit {
     this.initSocket();
   }
 
+  ngAfterViewChecked() {
+    this.scrollToBottom();
+  }
+
+  private scrollToBottom() {
+    try {
+      if (this.messagesContainer) {
+        this.messagesContainer.nativeElement.scrollTop =
+          this.messagesContainer.nativeElement.scrollHeight;
+      }
+    } catch (err) {
+      console.error('Scroll to bottom failed', err);
+    }
+  }
+
   private getAuthHeaders(): HttpHeaders {
     const token = localStorage.getItem('token');
     let headers = new HttpHeaders().set('Content-Type', 'application/json');
@@ -83,35 +100,37 @@ export class GroupDashboardComponent implements OnInit {
     if (!isError) setTimeout(() => (this.statusMessage = null), 3000);
   }
 
-  /** Convert API Group object to frontend-friendly Group */
   private mapGroup(group: any): Group {
     return {
       ...group,
-      users: group.members?.map((m: any) => ({
-        _id: m._id,
-        username: m.username,
-        email: m.email,
-        avatar: m.avatar || ''
-      })) || [],
+      users:
+        group.members?.map((m: any) => ({
+          _id: m._id,
+          username: m.username,
+          email: m.email,
+          avatar: m.avatar || ''
+        })) || [],
       admins: group.admins || [],
       channels: group.channels || ['General']
     };
   }
 
-  /** Load groups the user is in */
   loadUserGroups() {
     const email = localStorage.getItem('email');
     if (!email) return this.setStatus('Cannot detect user email', true);
 
-    this.http.get<Group[]>(`${API_BASE_URL}/groups?email=${encodeURIComponent(email)}`, { headers: this.getAuthHeaders() })
+    this.http
+      .get<Group[]>(`${API_BASE_URL}/groups?email=${encodeURIComponent(email)}`, {
+        headers: this.getAuthHeaders()
+      })
       .subscribe({
-        next: groups => {
-          this.groups = groups.map(g => this.mapGroup(g));
+        next: (groups) => {
+          this.groups = groups.map((g) => this.mapGroup(g));
 
           // Initialize messages
-          this.groups.forEach(group => {
+          this.groups.forEach((group) => {
             if (!this.messages[group._id]) this.messages[group._id] = {};
-            group.channels.forEach(ch => {
+            group.channels.forEach((ch) => {
               if (!this.messages[group._id][ch]) this.messages[group._id][ch] = [];
             });
           });
@@ -157,14 +176,14 @@ export class GroupDashboardComponent implements OnInit {
   }
 
   isNewMessageBlock(currentMsg: Message, previousMsg?: Message): boolean {
-    if (!previousMsg) return true; // first message
+    if (!previousMsg) return true;
     if (currentMsg.sender !== previousMsg.sender) return true;
 
     const currentTime = new Date(currentMsg.timestamp).getTime();
     const previousTime = new Date(previousMsg.timestamp).getTime();
     const diffMinutes = (currentTime - previousTime) / 1000 / 60;
 
-    return diffMinutes > 1; // >1 minute gap
+    return diffMinutes > 1;
   }
 
   addGroup(groupName: string) {
@@ -175,14 +194,14 @@ export class GroupDashboardComponent implements OnInit {
     if (!creatorEmail) return this.setStatus('Cannot detect creator email', true);
 
     const payload = { name: trimmedName, creatorEmail };
-    this.http.post<Group>(`${API_BASE_URL}/groups`, payload, { headers: this.getAuthHeaders() })
+    this.http
+      .post<Group>(`${API_BASE_URL}/groups`, payload, { headers: this.getAuthHeaders() })
       .subscribe({
-        next: group => {
+        next: (group) => {
           if (!group) return;
           const mapped = this.mapGroup(group);
 
-          // Ensure creator is in users/admins
-          if (!mapped.users.find(u => u._id === this.userId)) {
+          if (!mapped.users.find((u) => u._id === this.userId)) {
             mapped.users.push({ _id: this.userId, username: this.username, email: creatorEmail });
           }
           if (!mapped.admins.includes(this.userId)) mapped.admins.push(this.userId);
@@ -192,33 +211,36 @@ export class GroupDashboardComponent implements OnInit {
           this.newGroupName = '';
           this.setStatus(`Group "${mapped.name}" created successfully!`);
         },
-        error: err => this.setStatus(err.error?.error || 'Failed to create group', true)
+        error: (err) => this.setStatus(err.error?.error || 'Failed to create group', true)
       });
   }
 
   addChannel(channelName: string) {
     const name = channelName.trim();
-    if (!name || !this.currentGroup?._id) return this.setStatus('Select a group and provide a channel name', true);
+    if (!name || !this.currentGroup?._id)
+      return this.setStatus('Select a group and provide a channel name', true);
 
-    this.http.post<{ group: Group }>(
-      `${API_BASE_URL}/groups/${this.currentGroup._id}/add-channel`,
-      { name },
-      { headers: this.getAuthHeaders() }
-    ).subscribe({
-      next: res => {
-        const updatedGroup = this.mapGroup(res.group);
-        const idx = this.groups.findIndex(g => g._id === updatedGroup._id);
-        if (idx !== -1) this.groups[idx] = updatedGroup;
+    this.http
+      .post<{ group: Group }>(
+        `${API_BASE_URL}/groups/${this.currentGroup._id}/add-channel`,
+        { name },
+        { headers: this.getAuthHeaders() }
+      )
+      .subscribe({
+        next: (res) => {
+          const updatedGroup = this.mapGroup(res.group);
+          const idx = this.groups.findIndex((g) => g._id === updatedGroup._id);
+          if (idx !== -1) this.groups[idx] = updatedGroup;
 
-        this.currentGroup = updatedGroup;
-        this.currentChannel = name;
-        if (!this.messages[updatedGroup._id]) this.messages[updatedGroup._id] = {};
-        if (!this.messages[updatedGroup._id][name]) this.messages[updatedGroup._id][name] = [];
-        this.joinChannel(updatedGroup.name, name);
-        this.setStatus(`Channel "${name}" added!`);
-      },
-      error: err => this.setStatus(err.error?.error || 'Failed to add channel', true)
-    });
+          this.currentGroup = updatedGroup;
+          this.currentChannel = name;
+          if (!this.messages[updatedGroup._id]) this.messages[updatedGroup._id] = {};
+          if (!this.messages[updatedGroup._id][name]) this.messages[updatedGroup._id][name] = [];
+          this.joinChannel(updatedGroup.name, name);
+          this.setStatus(`Channel "${name}" added!`);
+        },
+        error: (err) => this.setStatus(err.error?.error || 'Failed to add channel', true)
+      });
   }
 
   selectGroup(group: any) {
@@ -227,7 +249,7 @@ export class GroupDashboardComponent implements OnInit {
 
     const groupId = this.currentGroup._id;
     if (!this.messages[groupId]) this.messages[groupId] = {};
-    this.currentGroup.channels.forEach(ch => {
+    this.currentGroup.channels.forEach((ch) => {
       if (!this.messages[groupId][ch]) this.messages[groupId][ch] = [];
     });
 
@@ -248,38 +270,38 @@ export class GroupDashboardComponent implements OnInit {
     this.joinChannel(this.currentGroup.name, channel);
   }
 
-private initSocket() {
-  if (this.socket) return;
+  private initSocket() {
+    if (this.socket) return;
 
-  this.socket = io('http://localhost:3000');
+    this.socket = io('http://localhost:3000');
 
-  // Only listen once for previous messages
-  this.socket.once('previousMessages', (msgs: Message[]) => {
-    if (!this.currentGroup || !this.currentChannel) return;
-    const groupId = this.currentGroup._id;
-    if (!this.messages[groupId]) this.messages[groupId] = {};
-    this.messages[groupId][this.currentChannel] = msgs || [];
-  });
+    this.socket.once('previousMessages', (msgs: Message[]) => {
+      if (!this.currentGroup || !this.currentChannel) return;
+      const groupId = this.currentGroup._id;
+      if (!this.messages[groupId]) this.messages[groupId] = {};
+      this.messages[groupId][this.currentChannel] = (msgs || []).slice(-50);
+      this.scrollToBottom();
+    });
 
-  // Only listen once for incoming messages globally
-  this.socket.off('receiveMessage'); // remove duplicate listeners
-  this.socket.on('receiveMessage', (msg: Message) => {
-    if (!msg || !this.currentGroup || !this.currentChannel) return;
+    this.socket.off('receiveMessage');
+    this.socket.on('receiveMessage', (msg: Message) => {
+      if (!msg || !this.currentGroup || !this.currentChannel) return;
 
-    const groupId = this.currentGroup._id;
-    const channel = this.currentChannel;
+      const groupId = this.currentGroup._id;
+      const channel = this.currentChannel;
 
-    // Ensure group and channel objects exist
-    if (!this.messages[groupId]) this.messages[groupId] = {};
-    if (!this.messages[groupId][channel]) this.messages[groupId][channel] = [];
+      if (!this.messages[groupId]) this.messages[groupId] = {};
+      if (!this.messages[groupId][channel]) this.messages[groupId][channel] = [];
 
-    // Only push if the message belongs to this group/channel
-    if (msg.group === this.currentGroup.name && msg.channel === channel) {
-      this.messages[groupId][channel].push(msg);
-    }
-  });
-}
-
+      if (msg.group === this.currentGroup.name && msg.channel === channel) {
+        this.messages[groupId][channel].push(msg);
+        if (this.messages[groupId][channel].length > 50) {
+          this.messages[groupId][channel] = this.messages[groupId][channel].slice(-50);
+        }
+        this.scrollToBottom();
+      }
+    });
+  }
 
   toggleMembersPanel() {
     this.showMembersPanel = !this.showMembersPanel;
@@ -288,38 +310,42 @@ private initSocket() {
   addUserToGroup(email: string) {
     if (!email || !this.currentGroup) return this.setStatus('Provide a valid email', true);
 
-    this.http.post<{ group: Group }>(
-      `${API_BASE_URL}/groups/${this.currentGroup._id}/add-user`,
-      { email },
-      { headers: this.getAuthHeaders() }
-    ).subscribe({
-      next: res => {
-        this.currentGroup = this.mapGroup(res.group);
-        const idx = this.groups.findIndex(g => g._id === res.group._id);
-        if (idx !== -1) this.groups[idx] = this.currentGroup;
-        this.setStatus(`${email} added to ${this.currentGroup.name}`);
-        this.newUserEmail = '';
-      },
-      error: err => this.setStatus(err.error?.error || 'Failed to add user', true)
-    });
+    this.http
+      .post<{ group: Group }>(
+        `${API_BASE_URL}/groups/${this.currentGroup._id}/add-user`,
+        { email },
+        { headers: this.getAuthHeaders() }
+      )
+      .subscribe({
+        next: (res) => {
+          this.currentGroup = this.mapGroup(res.group);
+          const idx = this.groups.findIndex((g) => g._id === res.group._id);
+          if (idx !== -1) this.groups[idx] = this.currentGroup;
+          this.setStatus(`${email} added to ${this.currentGroup.name}`);
+          this.newUserEmail = '';
+        },
+        error: (err) => this.setStatus(err.error?.error || 'Failed to add user', true)
+      });
   }
 
   removeUserFromGroup(userId: string) {
     if (!this.currentGroup) return;
 
-    this.http.post<{ group: Group }>(
-      `${API_BASE_URL}/groups/${this.currentGroup._id}/remove-user`,
-      { userId },
-      { headers: this.getAuthHeaders() }
-    ).subscribe({
-      next: res => {
-        this.currentGroup = this.mapGroup(res.group);
-        const idx = this.groups.findIndex(g => g._id === res.group._id);
-        if (idx !== -1) this.groups[idx] = this.currentGroup;
-        this.setStatus('User removed');
-      },
-      error: err => this.setStatus(err.error?.error || 'Failed to remove user', true)
-    });
+    this.http
+      .post<{ group: Group }>(
+        `${API_BASE_URL}/groups/${this.currentGroup._id}/remove-user`,
+        { userId },
+        { headers: this.getAuthHeaders() }
+      )
+      .subscribe({
+        next: (res) => {
+          this.currentGroup = this.mapGroup(res.group);
+          const idx = this.groups.findIndex((g) => g._id === res.group._id);
+          if (idx !== -1) this.groups[idx] = this.currentGroup;
+          this.setStatus('User removed');
+        },
+        error: (err) => this.setStatus(err.error?.error || 'Failed to remove user', true)
+      });
   }
 
   private joinChannel(groupName: string, channel: string) {
@@ -334,6 +360,13 @@ private initSocket() {
 
   public isAdminOfGroup(group: Group | null): boolean {
     return !!group?.admins?.includes(this.userId);
+  }
+
+  isAdmin(user: any): boolean {
+    if (!this.currentGroup || !user) return false;
+
+    const admins = this.currentGroup.admins || [];
+    return admins.includes(user._id) || admins.includes(user.email);
   }
 
   logout() {

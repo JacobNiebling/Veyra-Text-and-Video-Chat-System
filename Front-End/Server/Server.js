@@ -27,7 +27,7 @@ const UserSchema = new mongoose.Schema({
   password: { type: String, required: true },
   avatar: { type: String },
   roles: { type: [String], default: ['chat_user'] },
-  groups: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Group' }]
+  groups: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Group' }],
 });
 
 const GroupSchema = new mongoose.Schema({
@@ -35,7 +35,7 @@ const GroupSchema = new mongoose.Schema({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   admins: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  channels: { type: [String], default: ['General'] }
+  channels: { type: [String], default: ['General'] },
 });
 
 const MessageSchema = new mongoose.Schema({
@@ -45,7 +45,7 @@ const MessageSchema = new mongoose.Schema({
   avatar: String,
   text: String,
   image: String,
-  timestamp: { type: Date, default: Date.now }
+  timestamp: { type: Date, default: Date.now },
 });
 
 const User = mongoose.model('User', UserSchema);
@@ -53,11 +53,13 @@ const Group = mongoose.model('Group', GroupSchema);
 const Message = mongoose.model('Message', MessageSchema);
 
 // ------------------ MongoDB Connection ------------------
-mongoose.connect('mongodb://127.0.0.1:27017/chat_app', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => console.log('MongoDB connected'))
-  .catch(err => console.error('MongoDB connection error:', err));
+mongoose
+  .connect('mongodb://127.0.0.1:27017/chat_app', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log('MongoDB connected'))
+  .catch((err) => console.error('MongoDB connection error:', err));
 
 // ------------------ HTTP & PeerJS Server ------------------
 const server = http.createServer(app);
@@ -65,7 +67,13 @@ const peerServer = ExpressPeerServer(server, { debug: true, path: '/peerjs' });
 app.use('/peerjs', peerServer);
 
 // ------------------ Socket.IO ------------------
-const io = new Server(server, { cors: { origin: "http://localhost:4200", methods: ["GET", "POST"] } });
+const io = new Server(server, {
+    cors: {
+        origin: "http://localhost:4200",
+        methods: ["GET", "POST"]
+    },
+    path: "/socket.io/"
+});
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
@@ -80,7 +88,7 @@ io.on('connection', (socket) => {
       sender: 'System',
       text: `${username} joined the channel.`,
       avatar: '/assets/system.png',
-      timestamp: new Date()
+      timestamp: new Date(),
     });
     await joinMessage.save();
 
@@ -100,7 +108,7 @@ io.on('connection', (socket) => {
       sender: 'System',
       text: `${username} left the channel.`,
       avatar: '/assets/system.png',
-      timestamp: new Date()
+      timestamp: new Date(),
     });
     await leaveMessage.save();
     io.to(room).emit('receiveMessage', leaveMessage);
@@ -114,7 +122,7 @@ io.on('connection', (socket) => {
       avatar: avatar || '/assets/avatar.png',
       text,
       image,
-      timestamp: new Date()
+      timestamp: new Date(),
     });
     await msg.save();
     io.to(`${group}_${channel}`).emit('receiveMessage', msg);
@@ -129,11 +137,11 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => cb(null, Date.now() + '_' + file.originalname)
+  filename: (req, file, cb) => cb(null, Date.now() + '_' + file.originalname),
 });
 const upload = multer({ storage });
 app.post('/api/upload', upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ success: false, error: "No file uploaded" });
+  if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
   res.json({ success: true, path: `/uploads/${req.file.filename}` });
 });
 
@@ -148,19 +156,22 @@ app.post('/api/register', async (req, res) => {
   try {
     const { username, email, password, avatar } = req.body;
     if (!username || !email || !password)
-      return res.status(400).json({ success: false, error: "All fields required" });
+      return res.status(400).json({ success: false, error: 'All fields required' });
 
     if (await User.findOne({ email }))
-      return res.status(400).json({ success: false, error: "Email already registered" });
+      return res.status(400).json({ success: false, error: 'Email already registered' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({ username, email, password: hashedPassword, avatar });
     await newUser.save();
 
-    res.json({ success: true, user: { _id: newUser._id, username, email, avatar: getUserAvatar(newUser) } });
+    res.json({
+      success: true,
+      user: { _id: newUser._id, username, email, avatar: getUserAvatar(newUser) },
+    });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, error: "Server error" });
+    res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 
@@ -180,7 +191,7 @@ app.post('/api/login', async (req, res) => {
       email: user.email,
       avatar: getUserAvatar(user),
       roles: user.roles,
-      groups: user.groups
+      groups: user.groups,
     });
   } catch (err) {
     console.error(err);
@@ -222,23 +233,21 @@ app.get('/api/groups', async (req, res) => {
     console.error(err);
     res.status(500).json({ message: 'Failed to fetch groups', error: err.message });
   }
+}); // Get all groups for a specific user
+
+app.get('/api/groups/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const groups = await Group.find({ members: new mongoose.Types.ObjectId(userId) })
+      .populate('members', '_id username email avatar')
+      .populate('admins', '_id username email avatar')
+      .populate('createdBy', '_id username email');
+    res.json(groups);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load user groups' });
+  }
 });
-
-  // Get all groups for a specific user
-  app.get('/api/groups/user/:userId', async (req, res) => {
-    try {
-      const { userId } = req.params;
-      const groups = await Group.find({ members: userId }) // only groups where user is a member
-        .populate('members', '_id username email avatar')
-        .populate('admins', '_id username email avatar')
-        .populate('createdBy', '_id username email');
-      res.json(groups);
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Failed to load user groups' });
-    }
-  });
-
 // Add a channel to a group
 app.post('/api/groups/:id/add-channel', async (req, res) => {
   try {
@@ -307,8 +316,8 @@ app.post('/api/groups/:groupId/remove-user', async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    group.members = group.members.filter(id => id.toString() !== userId);
-    user.groups = user.groups.filter(id => id.toString() !== groupId);
+    group.members = group.members.filter((id) => id.toString() !== userId);
+    user.groups = user.groups.filter((id) => id.toString() !== groupId);
 
     await group.save();
     await user.save();

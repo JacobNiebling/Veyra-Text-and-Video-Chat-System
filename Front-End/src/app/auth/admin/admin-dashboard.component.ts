@@ -15,7 +15,7 @@ interface Settings {
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './admin.component.html',
-  styleUrls: ['./admin.component.scss']
+  styleUrls: ['./admin.component.scss'],
 })
 export class AdminDashboardComponent implements OnInit {
   pages = ['Users', 'Groups', 'Settings'];
@@ -55,7 +55,7 @@ export class AdminDashboardComponent implements OnInit {
         console.log('Loaded users:', data);
         this.users = data;
       },
-      error: () => this.showError('Failed to load users')
+      error: () => this.showError('Failed to load users'),
     });
   }
 
@@ -63,14 +63,12 @@ export class AdminDashboardComponent implements OnInit {
     this.adminService.getGroups().subscribe({
       next: (data: Group[]) => {
         // Force users array
-        this.groups = data.map(g => ({ ...g, users: g.users || [] }));
+        this.groups = data.map((g) => ({ ...g, users: g.users || [] }));
         console.log('Loaded groups:', this.groups);
       },
-      error: () => this.showError('Failed to load groups')
+      error: () => this.showError('Failed to load groups'),
     });
   }
-
-
 
   loadSettings() {
     console.log('Settings loaded (mock)');
@@ -87,7 +85,7 @@ export class AdminDashboardComponent implements OnInit {
       email: this.newUser.email,
       password: this.newUser.password,
       roles: this.newUser.roles,
-      groups: this.newUser.groups
+      groups: this.newUser.groups,
     };
 
     this.adminService.addUser(userToAdd).subscribe({
@@ -96,7 +94,7 @@ export class AdminDashboardComponent implements OnInit {
         this.showSuccess(`${user.username} added`);
         this.newUser = { username: '', email: '', password: '', roles: ['chat_user'], groups: [] };
       },
-      error: () => this.showError('Failed to add user')
+      error: () => this.showError('Failed to add user'),
     });
   }
 
@@ -104,13 +102,13 @@ export class AdminDashboardComponent implements OnInit {
     if (!user._id) return;
     this.adminService.removeUser(user._id).subscribe({
       next: () => {
-        this.users = this.users.filter(u => u._id !== user._id);
+        this.users = this.users.filter((u) => u._id !== user._id);
         this.groups.forEach((g: Group) => {
           g.users = (g.users || []).filter((m: User) => m._id !== user._id);
         });
         this.showSuccess(`${user.username} removed`);
       },
-      error: () => this.showError('Failed to remove user')
+      error: () => this.showError('Failed to remove user'),
     });
   }
 
@@ -121,25 +119,25 @@ export class AdminDashboardComponent implements OnInit {
 
     this.adminService.updateUserRoles(user._id, roles).subscribe({
       next: (u: User) => {
-        const index = this.users.findIndex(us => us._id === u._id);
+        const index = this.users.findIndex((us) => us._id === u._id);
         if (index > -1) this.users[index] = u;
         this.showSuccess(`${u.username} promoted to ${role}`);
       },
-      error: () => this.showError('Failed to promote user')
+      error: () => this.showError('Failed to promote user'),
     });
   }
 
   downgradeUserRole(user: User, role: string) {
     if (!user._id) return;
-    const roles = user.roles.filter(r => r !== role);
+    const roles = user.roles.filter((r) => r !== role);
     this.adminService.updateUserRoles(user._id, roles).subscribe({
       next: (u: User) => {
-        const index = this.users.findIndex(us => us._id === u._id);
+        const index = this.users.findIndex((us) => us._id === u._id);
         if (index > -1) this.users[index] = u;
         this.showSuccess(`${role} removed from ${u.username}`);
         this.selectedRole[user._id!] = '';
       },
-      error: () => this.showError('Failed to remove role')
+      error: () => this.showError('Failed to remove role'),
     });
   }
 
@@ -147,14 +145,16 @@ export class AdminDashboardComponent implements OnInit {
   addGroup() {
     if (!this.newGroup.name) return this.showError('Please enter group name');
 
-    this.adminService.addGroup({ name: this.newGroup.name, adminId: this.newGroup.adminId }).subscribe({
-      next: (group: Group) => {
-        this.groups.push(group);
-        this.showSuccess(`Group "${group.name}" added`);
-        this.newGroup = { name: '', adminId: '' };
-      },
-      error: () => this.showError('Failed to add group')
-    });
+    this.adminService
+      .addGroup({ name: this.newGroup.name, adminId: this.newGroup.adminId })
+      .subscribe({
+        next: (group: Group) => {
+          this.groups.push(group);
+          this.showSuccess(`Group "${group.name}" added`);
+          this.newGroup = { name: '', adminId: '' };
+        },
+        error: () => this.showError('Failed to add group'),
+      });
   }
 
   addUserToGroup(group: Group | null, userId: string | undefined) {
@@ -162,14 +162,13 @@ export class AdminDashboardComponent implements OnInit {
 
     this.adminService.addUserToGroup(group._id, userId).subscribe({
       next: (updatedGroup: Group) => {
-        const index = this.groups.findIndex(g => g._id === updatedGroup._id);
+        const index = this.groups.findIndex((g) => g._id === updatedGroup._id);
         if (index > -1) this.groups[index] = { ...updatedGroup, users: updatedGroup.users || [] };
         this.showSuccess(`User added to ${updatedGroup.name}`);
       },
-      error: () => this.showError('Failed to add user to group')
+      error: () => this.showError('Failed to add user to group'),
     });
   }
-
 
   deleteGroup(group: Group) {
     if (!group._id) return;
@@ -177,10 +176,10 @@ export class AdminDashboardComponent implements OnInit {
 
     this.adminService.deleteGroup(group._id).subscribe({
       next: () => {
-        this.groups = this.groups.filter(g => g._id !== group._id);
+        this.groups = this.groups.filter((g) => g._id !== group._id);
         this.showSuccess(`Group "${group.name}" deleted successfully`);
       },
-      error: () => this.showError('Failed to delete group')
+      error: () => this.showError('Failed to delete group'),
     });
   }
 
@@ -202,23 +201,23 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   // ------------------ UTILITIES ------------------
-  selectPage(page: string) { this.currentPage = page; this.selectedUser = null; this.selectedGroup = null; }
-  selectUser(user: User) { this.selectedUser = user; }
-  selectGroup(group: Group) { this.selectedGroup = group; }
-
-  getUsernames(users: (User | string)[] | undefined): string {
-    if (!users || users.length === 0) return 'No members found';
-
-    // If users are objects with username, map them
-    if (typeof users[0] === 'object') {
-      return (users as User[]).map(u => u.username).join(', ');
-    }
-
-    // If users are just IDs (strings), show count
-    return `Members: ${users.length}`;
+  selectPage(page: string) {
+    this.currentPage = page;
+    this.selectedUser = null;
+    this.selectedGroup = null;
+  }
+  selectUser(user: User) {
+    this.selectedUser = user;
+  }
+  selectGroup(group: Group) {
+    this.selectedGroup = group;
   }
 
+  getUsernames(users: (User | string)[] | undefined): string {
+    if (!users || users.length === 0) return 'No members';
 
+    return users.map((u) => (typeof u === 'string' ? u : u.username)).join(', ');
+  }
 
   getUserGroups(user: User): string {
     if (!user || !this.groups) return 'None';
@@ -228,8 +227,16 @@ export class AdminDashboardComponent implements OnInit {
     return userGroups.length ? userGroups.map((g: Group) => g.name).join(', ') : 'None';
   }
 
-  showSuccess(msg: string) { this.successMessage = msg; this.errorMessage = ''; setTimeout(() => this.successMessage = '', 3000); }
-  showError(msg: string) { this.errorMessage = msg; this.successMessage = ''; setTimeout(() => this.errorMessage = '', 3000); }
+  showSuccess(msg: string) {
+    this.successMessage = msg;
+    this.errorMessage = '';
+    setTimeout(() => (this.successMessage = ''), 3000);
+  }
+  showError(msg: string) {
+    this.errorMessage = msg;
+    this.successMessage = '';
+    setTimeout(() => (this.errorMessage = ''), 3000);
+  }
 
   signOut() {
     localStorage.removeItem('id');
@@ -240,6 +247,10 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   // ------------------ TRACK BY ------------------
-  trackByUserId(index: number, user: User) { return user._id; }
-  trackByGroupId(index: number, group: Group) { return group._id; }
+  trackByUserId(index: number, user: User) {
+    return user._id;
+  }
+  trackByGroupId(index: number, group: Group) {
+    return group._id;
+  }
 }

@@ -1,25 +1,27 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { io, Socket } from 'socket.io-client';
-import Peer from 'peerjs';
 import { Router } from '@angular/router';
 
 interface Message {
   sender: string;
   text?: string;
-  timestamp: Date;
+  timestamp: string | Date;
   image?: string;
   system?: boolean;
+  senderAvatar?: string;
+  group?: string;
+  channel?: string;
 }
 
 interface Group {
   _id: string;
   name: string;
-  members: { _id: string; username: string }[];
+  members: { _id: string; username: string; avatar?: string }[];
+  admins?: { _id: string; username: string }[];
   channels?: string[];
-  createdBy?: { _id: string; username: string };
 }
 
 @Component({
@@ -32,143 +34,140 @@ interface Group {
 export class ChatComponent implements OnInit, OnDestroy {
   username = '';
   userId = '';
-  avatarUrl = '/uploads/avatar.png';
+  avatarUrl = '/assets/avatar.png';
+  selectedAvatar: File | null = null;
+
   groups: Group[] = [];
   channels: { [groupId: string]: string[] } = {};
   currentGroup: Group | null = null;
   currentChannel = '';
 
-  // Store messages per group and channel
   messages: { [groupId: string]: { [channel: string]: Message[] } } = {};
   messagesView: Message[] = [];
 
   newMessage = '';
   selectedFile: File | null = null;
 
-  errorMessage = '';
-  debugLogs: string[] = [];
-
-  videoCallStarted = false;
   socket!: Socket;
-  peer!: Peer;
-  myStream!: MediaStream;
-  peers: { [id: string]: MediaStream } = {};
-  muted = false;
+  @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
 
+  private joinedChannels: Set<string> = new Set();
   private readonly API_BASE_URL = 'http://localhost:3000/api';
 
   constructor(private http: HttpClient, private router: Router) {}
 
   ngOnInit() {
-    this.logDebug('ngOnInit');
     this.loadUserFromLocalStorage();
   }
 
   ngOnDestroy() {
-    this.logDebug('ngOnDestroy');
     this.leaveChannel();
-    if (this.videoCallStarted) {
-      this.peer.destroy();
-      this.socket.disconnect();
-      this.myStream.getTracks().forEach(track => track.stop());
-    }
+    this.socket.disconnect();
   }
 
-  logDebug(msg: string) {
-    console.log('[Chat Debug]', msg);
-    this.debugLogs.push(msg);
-  }
-
-  loadUserFromLocalStorage() {
+  private loadUserFromLocalStorage() {
     const userId = localStorage.getItem('userId');
     const username = localStorage.getItem('username');
     const avatar = localStorage.getItem('avatar');
 
     if (!userId || !username) {
-      this.errorMessage = 'User not logged in. Redirecting...';
-      console.error(this.errorMessage);
-      setTimeout(() => this.router.navigate(['/login']), 1000);
+      alert('User not logged in.');
+      this.router.navigate(['/login']);
       return;
     }
 
     this.userId = userId;
     this.username = username;
-    this.avatarUrl = avatar || '/uploads/avatar.png';
+    this.avatarUrl = avatar || '/assets/avatar.png';
 
     this.loadUserGroups();
     this.initSocket();
   }
 
-  refreshUserGroups() {
-    this.loadUserGroups();
-  }
-
-  loadUserGroups() {
-    if (!this.userId) return;
-
+  private loadUserGroups() {
     this.http.get<Group[]>(`${this.API_BASE_URL}/groups/user/${this.userId}`).subscribe({
-      next: (res) => {
-        this.groups = res || [];
+      next: groups => {
+        this.groups = groups || [];
         this.groups.forEach(g => {
-          this.channels[g._id] = g.channels?.length ? g.channels : ['general', 'random', 'media'];
+          this.channels[g._id] = g.channels?.length ? g.channels : ['general'];
         });
 
         if (this.groups.length > 0) this.selectGroup(this.groups[0]);
       },
-      error: (err) => {
-        console.error('Failed to load groups', err);
+      error: err => console.error('Failed to load groups', err)
+    });
+  }
+
+  startCall(groupId: string) {
+    this.router.navigate(['/video_chat', groupId]);
+  }
+
+  private initSocket() {
+    this.socket = io('http://localhost:3000');
+
+    // Live messages
+    this.socket.on('receiveMessage', (msg: Message & { group: string; channel: string }) => {
+      msg.senderAvatar = msg.senderAvatar || '/assets/avatar.png';
+      this.addMessageToChannel(msg.group, msg.channel, msg);
+    });
+
+    // System messages
+    this.socket.on('userJoinedChannel', ({ username, channel, group }: any) => {
+      this.addSystemMessage(group, channel, `${username} joined ${channel}`);
+    });
+    this.socket.on('userLeftChannel', ({ username, channel, group }: any) => {
+      this.addSystemMessage(group, channel, `${username} left ${channel}`);
+    });
+
+    // Previous messages
+    this.socket.on('previousMessages', (msgs: Message[] & { group: string; channel: string }[]) => {
+      if (!msgs.length) return;
+      const groupId = msgs[0].group!;
+      const channel = msgs[0].channel!;
+      msgs.forEach(msg => msg.senderAvatar = msg.senderAvatar || '/assets/avatar.png');
+
+      this.messages[groupId] = this.messages[groupId] || {};
+      this.messages[groupId][channel] = msgs.slice(-50); // Keep last 50 only
+
+      if (this.currentGroup?._id === groupId && this.currentChannel === channel) {
+        this.messagesView = [...this.messages[groupId][channel]];
+        this.scrollToBottom(true);
       }
     });
   }
 
-  signOut() {
-    localStorage.clear();
-    this.router.navigate(['/login']);
-  }
-
-  initSocket() {
-    this.socket = io('http://localhost:3000');
-
-    this.socket.on('connect', () => this.logDebug('Socket connected: ' + this.socket.id));
-    this.socket.on('connect_error', (err) => this.logDebug('Socket connection error: ' + JSON.stringify(err)));
-
-    this.socket.on('userJoinedChannel', ({ username, channel, group }: any) => {
-      const sysMsg: Message = {
-        sender: 'System',
-        text: `${username} joined channel ${channel}`,
-        timestamp: new Date(),
-        system: true
-      };
-      this.addMessageToChannel(group, channel, sysMsg);
-    });
-
-    this.socket.on('userLeftChannel', ({ username, channel, group }: any) => {
-      const sysMsg: Message = {
-        sender: 'System',
-        text: `${username} left channel ${channel}`,
-        timestamp: new Date(),
-        system: true
-      };
-      this.addMessageToChannel(group, channel, sysMsg);
-    });
-
-    this.socket.on('receiveMessage', (msg: Message & { group: string; channel: string }) => {
-      this.addMessageToChannel(msg.group, msg.channel, msg);
-    });
+  private addSystemMessage(groupId: string, channel: string, text: string) {
+    const sysMsg: Message = {
+      sender: 'System',
+      text,
+      timestamp: new Date(),
+      system: true,
+      group: groupId,
+      channel
+    };
+    this.addMessageToChannel(groupId, channel, sysMsg);
   }
 
   private addMessageToChannel(groupId: string, channel: string, msg: Message) {
-    if (!this.messages[groupId]) this.messages[groupId] = {};
-    if (!this.messages[groupId][channel]) this.messages[groupId][channel] = [];
+    this.messages[groupId] = this.messages[groupId] || {};
+    this.messages[groupId][channel] = this.messages[groupId][channel] || [];
 
     // Prevent duplicates
     const exists = this.messages[groupId][channel].some(
-      m => m.timestamp === msg.timestamp && m.sender === msg.sender
+      m => new Date(m.timestamp).getTime() === new Date(msg.timestamp).getTime() && m.sender === msg.sender
     );
-    if (!exists) this.messages[groupId][channel].push(msg);
+    if (!exists) {
+      this.messages[groupId][channel].push(msg);
+
+      // Keep last 50
+      if (this.messages[groupId][channel].length > 50) {
+        this.messages[groupId][channel] = this.messages[groupId][channel].slice(-50);
+      }
+    }
 
     if (this.currentGroup?._id === groupId && this.currentChannel === channel) {
       this.messagesView = [...this.messages[groupId][channel]];
+      this.scrollToBottom(true);
     }
   }
 
@@ -176,32 +175,42 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.leaveChannel();
     this.currentGroup = group;
     this.currentChannel = group.channels?.[0] || this.channels[group._id]?.[0] || '';
-    this.selectChannel(this.currentChannel);
+    if (this.currentChannel) this.selectChannel(this.currentChannel);
   }
 
   selectChannel(ch: string) {
     if (!this.currentGroup) return;
-    this.leaveChannel();
+
+    // Leave previous channel
+    const prevChannelKey = `${this.currentGroup._id}:${this.currentChannel}`;
+    if (this.currentChannel && this.joinedChannels.has(prevChannelKey)) {
+      this.socket.emit('leave', { group: this.currentGroup._id, channel: this.currentChannel, username: this.username });
+      this.joinedChannels.delete(prevChannelKey);
+    }
+
     this.currentChannel = ch;
-
     const groupId = this.currentGroup._id;
-    if (!this.messages[groupId]) this.messages[groupId] = {};
-    if (!this.messages[groupId][ch]) this.messages[groupId][ch] = [];
+    const channelKey = `${groupId}:${ch}`;
 
-    // Display cached messages
-    this.messagesView = this.messages[groupId][ch];
+    this.messages[groupId] = this.messages[groupId] || {};
+    this.messages[groupId][ch] = this.messages[groupId][ch] || [];
+    this.messagesView = [...this.messages[groupId][ch]];
 
-    // Join channel
-    this.socket.emit('join', { group: groupId, channel: ch, username: this.username });
+    if (!this.joinedChannels.has(channelKey)) {
+      this.socket.emit('join', { group: groupId, channel: ch, username: this.username });
+      this.joinedChannels.add(channelKey);
+    }
 
-    // Fetch previous messages
     this.socket.emit('getChannelHistory', { group: groupId, channel: ch });
+    this.scrollToBottom(true);
+  }
 
-    this.socket.once('channelHistory', (msgs: Message[]) => {
-      this.messages[groupId][ch] = msgs.map(msg => ({ ...msg, system: msg.system || false }));
-      if (this.currentGroup?._id === groupId && this.currentChannel === ch) {
-        this.messagesView = [...this.messages[groupId][ch]];
-      }
+  private scrollToBottom(smooth = false) {
+    if (!this.messagesContainer) return;
+    const container = this.messagesContainer.nativeElement;
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: smooth ? 'smooth' : 'auto'
     });
   }
 
@@ -210,106 +219,54 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.socket.emit('leave', { group: this.currentGroup._id, channel: this.currentChannel, username: this.username });
   }
 
-  startCall(groupId: string) {
-    this.router.navigate(['/video_chat', groupId]);
-  }
-
-
   async sendMessage() {
-    if (!this.newMessage && !this.selectedFile) return;
+    if (!this.newMessage.trim() && !this.selectedFile) return;
     if (!this.currentGroup || !this.currentChannel) return;
 
-    let imageUrl: string | null = null;
+    let imageUrl: string | undefined;
     if (this.selectedFile) {
       const formData = new FormData();
       formData.append('file', this.selectedFile);
       try {
-        const uploadRes: any = await this.http.post(`${this.API_BASE_URL}/upload`, formData).toPromise();
-        imageUrl = `http://localhost:3000${uploadRes.path}`;
+        const res: any = await this.http.post(`${this.API_BASE_URL}/upload`, formData).toPromise();
+        imageUrl = `http://localhost:3000${res.path}`;
       } catch (err) {
-        console.error('Upload failed', err);
+        console.error('File upload failed', err);
       }
     }
 
-    const payload = {
-      group: this.currentGroup._id,
-      channel: this.currentChannel,
+    const msg: Message & { group: string; channel: string } = {
       sender: this.username,
+      senderAvatar: this.avatarUrl,
       text: this.newMessage || undefined,
-      image: imageUrl || undefined
+      image: imageUrl,
+      timestamp: new Date(),
+      group: this.currentGroup._id,
+      channel: this.currentChannel
     };
 
-    this.socket.emit('sendMessage', payload);
-
+    this.socket.emit('sendMessage', msg);
     this.newMessage = '';
     this.selectedFile = null;
   }
 
-  onFileSelected(event: any) {
-    this.selectedFile = event.target.files[0];
-  }
-  // ---------------- Video Call ----------------
-  async startVideoCall() {
-    if (!this.currentGroup || !this.currentChannel) {
-      alert('Select a group and channel first!');
-      return;
-    }
-    if (this.videoCallStarted) return;
+  onFileSelected(event: any) { this.selectedFile = event.target.files[0]; }
+  onAvatarSelected(event: any) { this.selectedAvatar = event.target.files[0]; }
 
-    this.videoCallStarted = true;
-    this.logDebug('Starting video call');
+  async uploadAvatar() {
+    if (!this.selectedAvatar || !this.userId) return;
+    const formData = new FormData();
+    formData.append('file', this.selectedAvatar);
+    formData.append('userId', this.userId);
 
-    this.myStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    this.addVideo(this.myStream, this.username);
-
-    this.peer = new Peer({ host: 'localhost', port: 3000, path: '/peerjs' });
-
-    this.peer.on('open', (id) => {
-      this.socket.emit('join', {
-        group: this.currentGroup?._id,
-        channel: this.currentChannel,
-        username: this.username,
-        peerId: id
-      });
-      this.logDebug('Peer opened with ID: ' + id);
-    });
-
-    this.peer.on('call', (call) => {
-      call.answer(this.myStream);
-      call.on('stream', (remoteStream) => this.addVideo(remoteStream, call.peer));
-      this.logDebug('Incoming call handled from: ' + call.peer);
-    });
-
-    this.socket.on('userJoined', ({ peerId }) => {
-      if (peerId !== this.peer.id) this.connectToNewUser(peerId, this.myStream);
-    });
-  }
-
-  addVideo(stream: MediaStream, id: string) {
-    const videoGrid = document.getElementById('video-grid')!;
-    let videoEl = document.getElementById(id) as HTMLVideoElement;
-    if (!videoEl) {
-      videoEl = document.createElement('video');
-      videoEl.id = id;
-      videoEl.autoplay = true;
-      videoEl.playsInline = true;
-      videoEl.srcObject = stream;
-      videoGrid.appendChild(videoEl);
-      this.logDebug('Added video element for: ' + id);
-    }
-  }
-
-  connectToNewUser(peerId: string, stream: MediaStream) {
-    const call = this.peer.call(peerId, stream);
-    call.on('stream', (remoteStream) => this.addVideo(remoteStream, peerId));
-    this.logDebug('Connected to new user via Peer: ' + peerId);
-  }
-
-  toggleMute() {
-    if (this.myStream) {
-      this.myStream.getAudioTracks()[0].enabled = this.muted;
-      this.muted = !this.muted;
-      this.logDebug('Toggled mute: ' + this.muted);
+    try {
+      const res: any = await this.http.post(`${this.API_BASE_URL}/upload/avatar`, formData).toPromise();
+      this.avatarUrl = `http://localhost:3000${res.path}`;
+      localStorage.setItem('avatar', this.avatarUrl);
+      this.socket.emit('updateAvatar', { userId: this.userId, avatar: this.avatarUrl });
+      this.selectedAvatar = null;
+    } catch (err) {
+      console.error('Avatar upload failed', err);
     }
   }
 }
