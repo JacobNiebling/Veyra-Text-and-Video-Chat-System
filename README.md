@@ -317,6 +317,14 @@ Listens to Sockets.IO events and updates the UI live when a new message is sent.
 - Client looks after the UI, Interaction, Display and Navigation.
 > JSON, WebSocket Events, Streams
 
+**Testing**
+Below I have listed the steps I took to do the Unit and integration testing:
+- To set up the testing I first ran: npm install mocha, npm install chai on my back end, then on the front end I ran npm install Karma and npm install Jasmine then I did npm install cypress for the end-to-end testing.
+- I then created a folder under my routes folder called test then created a group.test.js and a users.test.js file.
+- Afterwards I ran npm test.
+- For the unit testing I ran ng test.
+- For the end-to-end testing I ran npm cypress:open then followed by npm run cypress:run.
+
 ## Interaction Between Client and Server
 **Interaction Between Client and Server**
 The server handles all data management related tasks, authentication, file uploads and real-time messaging, while the Client side (Angular) focuses on displaying the dynamic interfaces and sending requests. When a user interacts with any component e.g. DashboardComponent or ChatComponent, the client then sends a HTTP request to the server. Which then updates the MongoDB collections - User, Group, Message, and returns JSON. Sockets.IO broadcasts messages and any membership changes to all connected clients, which then updates their views in real time by using observables and component state changes. Files upload via /api/upload and are saved to the server.
