@@ -3,6 +3,25 @@ const router = express.Router();
 const Group = require('../group');
 const User = require('../user-class');
 
+// Get all groups for a user by email
+router.get('/', async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ error: 'Missing email query param' });
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Find groups where the user is a member
+    const groups = await Group.find({ users: user._id }).populate('users', 'username email');
+
+    res.json(groups);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch groups' });
+  }
+});
+
 // Create a new group
 router.post('/', async (req, res) => {
   try {

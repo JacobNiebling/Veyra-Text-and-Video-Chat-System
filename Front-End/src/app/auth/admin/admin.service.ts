@@ -46,8 +46,8 @@ export class AdminService {
     return this.http.get<Group[]>(`${this.apiUrl}/groups`);
   }
 
-  addGroup(group: { name: string; adminId?: string }): Observable<Group> {
-    return this.http.post<Group>(`${this.apiUrl}/groups`, group);
+  addGroup(name: string, creatorEmail: string): Observable<Group> {
+    return this.http.post<Group>(`${this.apiUrl}/groups`, { name, creatorEmail });
   }
 
   deleteGroup(id: string): Observable<Group> {

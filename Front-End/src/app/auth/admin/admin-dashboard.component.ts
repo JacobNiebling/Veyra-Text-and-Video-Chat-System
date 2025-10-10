@@ -142,19 +142,20 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   // ------------------ GROUP METHODS ------------------
-  addGroup() {
+    addGroup() {
     if (!this.newGroup.name) return this.showError('Please enter group name');
 
-    this.adminService
-      .addGroup({ name: this.newGroup.name, adminId: this.newGroup.adminId })
-      .subscribe({
-        next: (group: Group) => {
-          this.groups.push(group);
-          this.showSuccess(`Group "${group.name}" added`);
-          this.newGroup = { name: '', adminId: '' };
-        },
-        error: () => this.showError('Failed to add group'),
-      });
+    const creatorEmail = localStorage.getItem('email');
+    if (!creatorEmail) return this.showError('Cannot detect creator email');
+
+    this.adminService.addGroup(this.newGroup.name, creatorEmail).subscribe({
+      next: (group: Group) => {
+        this.groups.push(group);
+        this.showSuccess(`Group "${group.name}" added`);
+        this.newGroup = { name: '', adminId: '' }; // reset
+      },
+      error: (err) => this.showError(err.error?.error || 'Failed to add group'),
+    });
   }
 
   addUserToGroup(group: Group | null, userId: string | undefined) {

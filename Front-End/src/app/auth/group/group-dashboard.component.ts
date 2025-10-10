@@ -125,6 +125,9 @@ export class GroupDashboardComponent implements OnInit, AfterViewChecked {
       })
       .subscribe({
         next: (groups) => {
+          const previousGroupId = this.currentGroup?._id;
+          const previousChannel = this.currentChannel;
+
           this.groups = groups.map((g) => this.mapGroup(g));
 
           // Initialize messages
@@ -135,10 +138,27 @@ export class GroupDashboardComponent implements OnInit, AfterViewChecked {
             });
           });
 
+          // Preserve previous selection if possible
+          if (previousGroupId) {
+            const matchedGroup = this.groups.find((g) => g._id === previousGroupId);
+            if (matchedGroup) {
+              this.selectGroup(matchedGroup);
+              if (previousChannel && matchedGroup.channels.includes(previousChannel)) {
+                this.selectChannel(previousChannel);
+              }
+              return;
+            }
+          }
+
           if (this.groups.length > 0) this.selectGroup(this.groups[0]);
         },
         error: () => this.setStatus('Failed to load groups', true)
       });
+  }
+
+  refreshUserGroups() {
+    this.loadUserGroups();
+    this.setStatus('Groups refreshed');
   }
 
   startCall(groupId: string) {

@@ -351,6 +351,45 @@ app.delete('/api/groups/:id', async (req, res) => {
   }
 });
 
+// Create a new group
+app.post('/api/groups', async (req, res) => {
+  try {
+    const { name, creatorEmail } = req.body;
+
+    if (!name || !creatorEmail)
+      return res.status(400).json({ error: 'Group name and creatorEmail required' });
+
+    // Find the user creating the group
+    const user = await User.findOne({ email: creatorEmail });
+    if (!user) return res.status(404).json({ error: 'Creator not found' });
+
+    // Create the group
+    const group = new Group({
+      name,
+      createdBy: user._id,
+      members: [user._id],
+      admins: [user._id],
+      channels: ['General'],
+    });
+
+    await group.save();
+
+    // Add the group to the user's groups array
+    user.groups.push(group._id);
+    await user.save();
+
+    // Populate members and admins for response
+    const populatedGroup = await Group.findById(group._id)
+      .populate('members', '_id username email avatar')
+      .populate('admins', '_id username email avatar');
+
+    res.json(populatedGroup);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to create group' });
+  }
+});
+
 // ------------------ Socket.IO ------------------
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
