@@ -6,7 +6,6 @@ import { AdminService, User, Group } from './admin.service';
 
 interface Settings {
   theme: 'light' | 'dark';
-  emailNotifications: boolean;
   defaultUserRole: string;
 }
 
@@ -29,7 +28,6 @@ export class AdminDashboardComponent implements OnInit {
 
   settings: Settings = {
     theme: 'light',
-    emailNotifications: true,
     defaultUserRole: 'chat_user',
   };
 
@@ -188,12 +186,6 @@ export class AdminDashboardComponent implements OnInit {
   toggleTheme() {
     this.settings.theme = this.settings.theme === 'light' ? 'dark' : 'light';
     this.showSuccess(`Theme switched to ${this.settings.theme}`);
-  }
-
-  toggleEmailNotifications() {
-    this.settings.emailNotifications = !this.settings.emailNotifications;
-    const status = this.settings.emailNotifications ? 'enabled' : 'disabled';
-    this.showSuccess(`Email notifications ${status}`);
   }
 
   changeDefaultRole(role: string) {

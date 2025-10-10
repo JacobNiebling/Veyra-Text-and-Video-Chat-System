@@ -8,36 +8,42 @@
 5. [Node Server Architecture](#node-server-architecture)
 6. [Server Routes](#server-routes)
 7. [Client-Server Interaction](#client-server-interaction)
+8. [Client-Server Responsibilities](#client-server-responsibilities)
+9. [Interaction Between Client and Server](#Interaction-Between-Client-and-Server)
 
 ## Project Overview
 This project implements a **text and video chat system** with real-time messaging. Users can:
 - Communicate in **groups and channels**
 - Use text chat and video chat
 - Have different **permission levels** (Admin, Moderator, User)
+- Git Repo: https://github.com/JacobNiebling/3813ICT_VideoChatSystem
 
-The frontend is implemented using **Angular** and the backend uses **Node.js with Express**. **Socket.io** is used for real-time communication
+The frontend is implemented using **Angular** and the backend uses **Node.js with Express**. **Sockets.io** is used for real-time communication
 
 ## Git Repository Organization
-When organizing my Git repository I decided to keep it under one branch to make it easier for when committing changes. I made sure to every few days update the repository with the latest version
+When organizing my Git repository I decided to keep it under one branch to make it easier for when committing changes. I made sure to every few days update the repository with the latest version to ensure that all progress was saved. During development of this application, I used Git to track every major change in both the client and server code. Which included updates, new routes and any component modiciations made. This allowed me to revert back to any previous version if needed be and maintain a history of this projects development.
 
 ## Data Structures
 
 **User Interface**
+```
 interface User {
   id: string;
   username: string;
   email: string;
+  avatar: string;
   roles: string[];
   groups: string[];
   online?: boolean;
 }
-
+```
 This interface represents an individual user
 
 **Fields**
 - id: string - unique user identifier
 - username: string - Display name
 - email: string - login information
+- avatar: string - avatar image for profile
 - roles: string[] - User permissions
 - groups: string[] - List of group IDs the member is a part of
 - Online?: boolean - To track of the user is online or offline
@@ -54,18 +60,23 @@ This interface represents an individual user
 - Show role badge/display admins/mods
 
 **Group Interface**
+```
 interface Group {
-  id: number;
+  _id: string;
   name: string;
   channels: string[];
+  users: { _id: string; username: string; email: string; avatar?: string }[];
+  admins: string[];
 }
-
+```
 This represents the collection of users and channels associated with the user
 
 **Fields**
 - id: number - Group unique identifier
 - name: string - Display name of group
 - channels: string[] - Channel name array for group and represents separate chat rooms
+- users: string[] - List of users per group
+- admins: string[] - List of admins per group
 
 **Usage**
 **Server:**
@@ -78,26 +89,69 @@ This represents the collection of users and channels associated with the user
 - Show the available channels inside each group
 - Navigate channels for message viewing and posting
 
+**UserSchema**
+```
+const UserSchema = new mongoose.Schema({
+  username: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  avatar: { type: String },
+  roles: { type: [String], default: ['chat_user'] },
+  groups: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Group' }],
+});
+```
+This represents a user and stores their username, email, password, avatar, roles and groups they belong to.
+
+**GroupSchema**
+```
+const GroupSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  admins: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  channels: { type: [String], default: ['General'] },
+});
+```
+This represents a group chat and stores the groups name, the creator, lists of members/admins and the names of the group's channels.
+
+**MessageSchema**
+```
+const MessageSchema = new mongoose.Schema({
+  group: String,
+  channel: String,
+  sender: String,
+  avatar: String,
+  text: String,
+  image: String,
+  timestamp: { type: Date, default: Date.now },
+});
+```
+This represents a message sent winthin a group's channel, includes the group and channel it belongs to, sender information, avatar/images, message text and a timestamp.
+
 ## Angular Architecture
 **Components:**
 - LoginComponent - Authentication
-- DashboardComponent - List groups and channels
+- RegisterComponent - Account registration
+- GroupDashboardComponent - List groups and channels
+- AdminDashboardComponent - List users and groups
 - ChatComponent - Text chat interface
-- VideoChatComponent - Real-time video chat (not added till Phase 2)
+- VideoChatComponent - Real-time video chat
 
 **Services:**
 - AuthService - User authentication
 - ChatService - Manages messages and channels
-- VideoService - Handles video streaming and signaling (Not added till Phase 2)
+- VideoService - Handles video streaming and signaling 
 
 **Models:**
 - User, Group, Channel, Message
 
 **Routes:**
 - /login - LoginComponent
-- /dashboard - DashboardComponent
+- /group-dashboard - GroupDashboardComponent
+- /admin-dashboard - AdminDashboardComponent
+- /chat - ChatComponent
 - /group/:id/channel/:id - ChatComponent
-- /group/:id/channel/:id/video - VideoChatComponent (Not added till Phase 2)
+- /group/:id/channel/:id/video - VideoChatComponent
 
 ## Node Server Architecture
 **Modules:**
@@ -108,11 +162,11 @@ This represents the collection of users and channels associated with the user
 
 **Global Variables**
 - app - Express instance
-- io - Socket.io server instance
+- io - Sockets.io server instance
 - PORT - Server port
 
 **Server.js**
-- Sets up Express, Sockets.io, connects to MongoDB, defines middleware, starts server (MongoDB, not added till Phase 2)
+- Sets up Express, Sockets.io, connects to MongoDB, defines middleware, starts server 
 
 ## Server-Side Routes
 
@@ -206,3 +260,67 @@ The client communicates with the server using **HTTP requests** for all actions 
 - The component then refreshes the displayed list of users and their roles to reflect the update immediately.
 
 In all cases, the client ensures that the **data displayed in the Angular components always reflects the current server state**, providing a responsive and up-to-date user interface.
+
+## client-server-responsibilities
+**Server**
+
+**REST API (JSON-based)**
+- Has endpoints such as /api/login, /api/group, /api/users/:id, and returns JSON output.
+
+**Authentication and Security**
+- Handles user registration, password hashing via bcrypt.
+
+**Database Management**
+- Uses MongoDB with Mongoose models (User, Group, Message) to persist users, roles, group membership, channels and chat logs.
+
+**Role Enforcement**
+- Processes requests with role logic - chat_user, group_admin, super_admin and restricts access to certain endpoints that certain roles shouldn't have access to.
+
+**Real-Time Communication**
+- Uses Sockets.io for broadcasting messages, notify join/leave events and pushes live updates to connected Angular clients.
+
+**Video Streaming**
+- PeerJS server is integrated for peer-to-peer video chat.
+
+**File Uploading**
+- Uses Multer to handle the uploading of user avatars and images, avatars are served from /assets and images are served from /uploads.
+
+**Client**
+
+**UI Rendering**
+- Displays the login screen, dashboards, groups, and chat messages via components such as LoginComponent, GroupDashboardComponent and ChatComponent etc.
+
+**API**
+- Uses Angular Services such as AuthService, Chatservice to perform HTTP requests to the server and handle responses.
+
+**Routing and Navigation**
+- Navigates via routes e.g. /group/:id/channel/:id without reloading the pages by using Angular Router.
+
+**Local Session Storage**
+- Stores authentication tokens and user identity for maintaining the session state.
+
+**Real-Time Events**
+Listens to Sockets.IO events and updates the UI live when a new message is sent.
+
+**Video Streaming**
+- Establishes a PeerJS connection for video chat session but relies on the server for signalling.
+
+**File Upload**
+- Sends avatar/chat image uploads using the /api/upload endpoint then displays them in chat.
+
+**Client-side Filtering and Rendering**
+- Handles UI changes without waiting for a full refresh.
+
+**Summary**
+- Server looks after the Data Logic, Security, Persistence, Real-Time Events
+> REST API, WebSocket, Static Files
+- Client looks after the UI, Interaction, Display and Navigation.
+> JSON, WebSocket Events, Streams
+
+## Interaction Between Client and Server
+**Interaction Between Client and Server**
+- The server handles all data management related tasks, authentication, file uploads and real-time messaging, while the Client side (Angular) focuses on displaying the dynamic interfaces and sending requests. When a user interacts with any component e.g. DashboardComponent or ChatComponent, the client then sends a HTTP request to the server. Which then updates the MongoDB collections - User, Group, Message, and returns JSON. Sockets.IO broadcasts messages and any membership changes to all connected clients, which then updates their views in real time by using observables and component state changes. Files upload via /api/upload and are saved to the server.
+
+
+
+:copyright: Jacob Niebling 2025

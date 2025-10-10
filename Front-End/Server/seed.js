@@ -15,9 +15,9 @@ mongoose.connect('mongodb://127.0.0.1:27017/chat_app')
   .then(async () => {
     await User.deleteMany({});
     await User.insertMany([
-      { username: 'super', email: 'superadmin@test.com', password: bcrypt.hashSync('123', 10), roles: ['super_admin'], groups: ['all'] },
-      { username: 'groupadmin', email: 'groupadmin@test.com', password: bcrypt.hashSync('groupadmin', 10), roles: ['group_admin'], groups: ['group1'] },
-      { username: 'chatuser', email: 'chatuser@test.com', password: bcrypt.hashSync('chatuser', 10), roles: ['chat_user'], groups: ['group1', 'group2'] }
+      { username: 'super', email: 'superadmin@test.com', password: bcrypt.hashSync('123', 10), roles: ['super_admin'], groups: [''] },
+      { username: 'groupadmin', email: 'groupadmin@test.com', password: bcrypt.hashSync('groupadmin', 10), roles: ['group_admin'], groups: [''] },
+      { username: 'chatuser', email: 'chatuser@test.com', password: bcrypt.hashSync('chatuser', 10), roles: ['chat_user'], groups: [''] }
     ]);
     console.log('Users seeded');
     mongoose.connection.close();
