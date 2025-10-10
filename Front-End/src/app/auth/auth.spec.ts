@@ -20,7 +20,7 @@ describe('AuthService', () => {
   });
 
   it('should return token on register', (done) => {
-    service.register('test@test.com', 'user', '123456').subscribe(res => {
+    service.register('test@test.com', '123456').subscribe(res => {
       expect(res.token).toBe('fake-jwt-token');
       done();
     });

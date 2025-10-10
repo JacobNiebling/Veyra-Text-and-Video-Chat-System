@@ -10,10 +10,12 @@
   "description": "",
   "dependencies": {
     "bcryptjs": "^3.0.2",
+    "chai": "^6.2.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "mocha": "^11.7.4",
     "mongod": "^2.0.0",
     "mongodb": "^6.20.0",
     "mongoose": "^8.19.0",
