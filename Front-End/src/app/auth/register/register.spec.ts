@@ -10,8 +10,11 @@ describe('RegisterPage', () => {
       imports: [RegisterComponent]
     }).compileComponents();
 
+    // Create component instance and fixture
     fixture = TestBed.createComponent(RegisterComponent);
     component = fixture.componentInstance;
+
+    // Trigger data binding
     fixture.detectChanges();
   });
 

@@ -21,7 +21,7 @@ This project implements a **text and video chat system** with real-time messagin
 The frontend is implemented using **Angular** and the backend uses **Node.js with Express**. **Sockets.io** is used for real-time communication
 
 ## Git Repository Organization
-When organizing my Git repository I decided to keep it under one branch to make it easier for when committing changes. I made sure to every few days update the repository with the latest version to ensure that all progress was saved. During development of this application, I used Git to track every major change in both the client and server code. Which included updates, new routes and any component modiciations made. This allowed me to revert back to any previous version if needed be and maintain a history of this projects development.
+When organizing my Git repository I decided to keep it under one branch to make it easier for when committing changes. I made sure to every few days update the repository with the latest version to ensure that all progress was saved. During development of this application, I used Git to track every major change in both the client and server code. Which included updates, new routes and any component modifications made. This allowed me to revert back to any previous version if needed be and maintain a history of this projects development.
 
 ## Data Structures
 
@@ -126,7 +126,7 @@ const MessageSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now },
 });
 ```
-This represents a message sent winthin a group's channel, includes the group and channel it belongs to, sender information, avatar/images, message text and a timestamp.
+This represents a message sent within a group's channel, includes the group and channel it belongs to, sender information, avatar/images, message text and a timestamp.
 
 ## Angular Architecture
 **Components:**
@@ -319,8 +319,6 @@ Listens to Sockets.IO events and updates the UI live when a new message is sent.
 
 ## Interaction Between Client and Server
 **Interaction Between Client and Server**
-- The server handles all data management related tasks, authentication, file uploads and real-time messaging, while the Client side (Angular) focuses on displaying the dynamic interfaces and sending requests. When a user interacts with any component e.g. DashboardComponent or ChatComponent, the client then sends a HTTP request to the server. Which then updates the MongoDB collections - User, Group, Message, and returns JSON. Sockets.IO broadcasts messages and any membership changes to all connected clients, which then updates their views in real time by using observables and component state changes. Files upload via /api/upload and are saved to the server.
-
-
+The server handles all data management related tasks, authentication, file uploads and real-time messaging, while the Client side (Angular) focuses on displaying the dynamic interfaces and sending requests. When a user interacts with any component e.g. DashboardComponent or ChatComponent, the client then sends a HTTP request to the server. Which then updates the MongoDB collections - User, Group, Message, and returns JSON. Sockets.IO broadcasts messages and any membership changes to all connected clients, which then updates their views in real time by using observables and component state changes. Files upload via /api/upload and are saved to the server.
 
 :copyright: Jacob Niebling 2025

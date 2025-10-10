@@ -1,4 +1,4 @@
-// ------------------ Imports ------------------
+// Imports
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -11,16 +11,16 @@ const fs = require('fs');
 const { ExpressPeerServer } = require('peer');
 const multer = require('multer');
 
-// ------------------ App & Config ------------------
+// App & Config
 const app = express();
 const PORT = 3000;
 
-// ------------------ Middleware ------------------
+// Middleware
 app.use(cors({ origin: 'http://localhost:4200', credentials: true }));
 app.use(bodyParser.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// ------------------ MongoDB Models ------------------
+// MongoDB Models
 const UserSchema = new mongoose.Schema({
   username: { type: String, required: true },
   email: { type: String, required: true, unique: true },
@@ -52,7 +52,7 @@ const User = mongoose.model('User', UserSchema);
 const Group = mongoose.model('Group', GroupSchema);
 const Message = mongoose.model('Message', MessageSchema);
 
-// ------------------ MongoDB Connection ------------------
+// MongoDB Connection
 mongoose
   .connect('mongodb://127.0.0.1:27017/chat_app', {
     useNewUrlParser: true,
@@ -61,12 +61,12 @@ mongoose
   .then(() => console.log('MongoDB connected'))
   .catch((err) => console.error('MongoDB connection error:', err));
 
-// ------------------ HTTP & PeerJS Server ------------------
+// HTTP & PeerJS Server
 const server = http.createServer(app);
 const peerServer = ExpressPeerServer(server, { debug: true, path: '/peerjs' });
 app.use('/peerjs', peerServer);
 
-// ------------------ Socket.IO ------------------
+// Socket.IO
 const io = new Server(server, {
     cors: {
         origin: "http://localhost:4200",
@@ -75,13 +75,16 @@ const io = new Server(server, {
     path: "/socket.io/"
 });
 
+// Listen for new client connections to the Socket.IO server
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
+  // Listen for the 'join' event sent by a client when users join a channel
   socket.on('join', async ({ group, channel, username }) => {
     const room = `${group}_${channel}`;
     socket.join(room);
 
+    // User joined message
     const joinMessage = new Message({
       group,
       channel,
@@ -90,18 +93,23 @@ io.on('connection', (socket) => {
       avatar: '/assets/system.png',
       timestamp: new Date(),
     });
+
+    // Saves message to database
     await joinMessage.save();
 
+    // Broadcasts join message to all users in same channel
     io.to(room).emit('receiveMessage', joinMessage);
 
     const previousMessages = await Message.find({ group, channel }).sort({ timestamp: 1 });
     socket.emit('previousMessages', previousMessages);
   });
 
+  // Listen for a user leaving a channel
   socket.on('leave', async ({ group, channel, username }) => {
     const room = `${group}_${channel}`;
     socket.leave(room);
 
+    // Broadcast a message to all users saying that the user left the channel
     const leaveMessage = new Message({
       group,
       channel,
@@ -114,7 +122,10 @@ io.on('connection', (socket) => {
     io.to(room).emit('receiveMessage', leaveMessage);
   });
 
+  // Listen for a user sendintg a message in chat
   socket.on('sendMessage', async ({ group, channel, sender, avatar, text, image }) => {
+
+    // Message object
     const msg = new Message({
       group,
       channel,
@@ -125,46 +136,61 @@ io.on('connection', (socket) => {
       timestamp: new Date(),
     });
     await msg.save();
+
+    // Broadcast to all users in channel message sent by user
     io.to(`${group}_${channel}`).emit('receiveMessage', msg);
   });
 
   socket.on('disconnect', () => console.log('User disconnected:', socket.id));
 });
 
-// ------------------ Multer Upload ------------------
+// Multer Upload
+
+// File upload directory
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 
+// Configure storage settings
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => cb(null, Date.now() + '_' + file.originalname),
 });
+
+// Initialize storage configoration and endpoint for file uploads
 const upload = multer({ storage });
 app.post('/api/upload', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
   res.json({ success: true, path: `/uploads/${req.file.filename}` });
 });
 
-// ------------------ Helper ------------------
+// Helper
+
+// Give user a default avatar if one doesn't exist
 function getUserAvatar(user) {
   if (!user.avatar) return '/assets/avatar.png';
   return user.avatar.startsWith('http') ? user.avatar : `/uploads/${user.avatar}`;
 }
 
-// ------------------ Auth ------------------
+// Auth
+
 app.post('/api/register', async (req, res) => {
   try {
     const { username, email, password, avatar } = req.body;
+
+    // Check if fields are populated
     if (!username || !email || !password)
       return res.status(400).json({ success: false, error: 'All fields required' });
 
+    // If a user with email exists throw error
     if (await User.findOne({ email }))
       return res.status(400).json({ success: false, error: 'Email already registered' });
 
+    // Hash password and create/save new user to database
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({ username, email, password: hashedPassword, avatar });
     await newUser.save();
 
+    // Success message
     res.json({
       success: true,
       user: { _id: newUser._id, username, email, avatar: getUserAvatar(newUser) },
@@ -175,15 +201,20 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
+// Login
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    // Find user via email
     const user = await User.findOne({ email });
     if (!user) return res.json({ valid: false, error: 'Invalid email or password' });
 
+    // Compare password entered with hashed password in MongoDB database
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.json({ valid: false, error: 'Invalid email or password' });
 
+    // Success message
     res.json({
       valid: true,
       id: user._id,
@@ -199,8 +230,11 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// Get all users
 app.get('/api/users', async (req, res) => {
   try {
+
+    // Fetch all users and select only specific fields to return
     const users = await User.find().select('_id username email avatar roles groups');
     res.json(users);
   } catch (err) {
@@ -209,45 +243,61 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// ------------------ Get user by ID ------------------
+// Get user by ID
 app.get('/api/users/:id', async (req, res) => {
   try {
+
+    // Find user by their MongoDB ObjectID and populate the 'groups' field with only _id, name and channels
     const user = await User.findById(req.params.id).populate('groups', '_id name channels');
+
+    // If user does not exist throw 404 error
     if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Return user object with populated group details
     res.json(user);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
 });
-// ------------------ Groups API ------------------
+// Groups API
 
 // Get all groups
 app.get('/api/groups', async (req, res) => {
   try {
+
+    // Fetch all groups from MongoDB database then populate members and admins with selected fields
     const groups = await Group.find()
       .populate('members', '_id username email avatar')
       .populate('admins', '_id username email avatar');
+
+      // Send groups as JSON response
     res.json(groups);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to fetch groups', error: err.message });
   }
-}); // Get all groups for a specific user
+});
 
+// Get all groups for a specific user
 app.get('/api/groups/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
+
+    // Find all groups where userId is in the members array then populate members, admins and group creator info
     const groups = await Group.find({ members: new mongoose.Types.ObjectId(userId) })
       .populate('members', '_id username email avatar')
       .populate('admins', '_id username email avatar')
       .populate('createdBy', '_id username email');
+
+      // Send groups the user belongs to
     res.json(groups);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to load user groups' });
   }
 });
+
 // Add a channel to a group
 app.post('/api/groups/:id/add-channel', async (req, res) => {
   try {
@@ -255,14 +305,17 @@ app.post('/api/groups/:id/add-channel', async (req, res) => {
     const { name } = req.body;
     if (!name) return res.status(400).json({ error: 'Channel name required' });
 
+    // Find group via the ID
     const group = await Group.findById(id);
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
+    // Add the channel if it does not exist already
     if (!group.channels.includes(name)) {
       group.channels.push(name);
       await group.save();
     }
 
+    // Return updated group with populated members/admins
     const populatedGroup = await Group.findById(id)
       .populate('members', '_id username email avatar')
       .populate('admins', '_id username email avatar');
@@ -280,19 +333,24 @@ app.post('/api/groups/:groupId/add-user', async (req, res) => {
     const { groupId } = req.params;
     const { email } = req.body;
 
+    // Find group
     const group = await Group.findById(groupId);
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
+    // Find user bu email
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     // Add user to group and group to user if not already added
     if (!group.members.includes(user._id)) group.members.push(user._id);
+
+    // Add group to users groups if not already added
     if (!user.groups.includes(groupId)) user.groups.push(groupId);
 
     await group.save();
     await user.save();
 
+    // Return updated group and user with populated fields
     const populatedGroup = await Group.findById(groupId)
       .populate('members', '_id username email avatar')
       .populate('admins', '_id username email avatar');
@@ -310,18 +368,23 @@ app.post('/api/groups/:groupId/remove-user', async (req, res) => {
     const { groupId } = req.params;
     const { userId } = req.body;
 
+    // Find group and user
     const group = await Group.findById(groupId);
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
+    // Remove user from group member array
     group.members = group.members.filter((id) => id.toString() !== userId);
+
+    // Remove group from users array
     user.groups = user.groups.filter((id) => id.toString() !== groupId);
 
     await group.save();
     await user.save();
 
+    // Return updated group with populated members/admins
     const populatedGroup = await Group.findById(groupId)
       .populate('members', '_id username email avatar')
       .populate('admins', '_id username email avatar');
@@ -338,6 +401,7 @@ app.delete('/api/groups/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Delete the group by ID
     const deleted = await Group.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ error: 'Group not found' });
 
@@ -363,7 +427,7 @@ app.post('/api/groups', async (req, res) => {
     const user = await User.findOne({ email: creatorEmail });
     if (!user) return res.status(404).json({ error: 'Creator not found' });
 
-    // Create the group
+    // Create the group with a default channel
     const group = new Group({
       name,
       createdBy: user._id,
@@ -378,7 +442,7 @@ app.post('/api/groups', async (req, res) => {
     user.groups.push(group._id);
     await user.save();
 
-    // Populate members and admins for response
+    // Return the new created group with populated members and admins
     const populatedGroup = await Group.findById(group._id)
       .populate('members', '_id username email avatar')
       .populate('admins', '_id username email avatar');
@@ -390,7 +454,7 @@ app.post('/api/groups', async (req, res) => {
   }
 });
 
-// ------------------ Socket.IO ------------------
+// Socket.IO
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
@@ -457,5 +521,5 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => console.log('User disconnected:', socket.id));
 });
 
-// ------------------ Start Server ------------------
+// Start Server
 server.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

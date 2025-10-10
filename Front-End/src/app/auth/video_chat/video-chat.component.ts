@@ -15,12 +15,17 @@ import { Router } from '@angular/router';
   imports: [CommonModule]
 })
 export class VideoChatComponent implements OnInit, OnDestroy {
-  @Input({ required: true }) groupId!: string;
-  @Input() userRole: 'admin' | 'group_admin' | 'chat_user' = 'chat_user';
 
+  // Inputs for group/room ID
+  @Input({ required: true }) groupId!: string;
+  @Input() userRole: 'super_admin' | 'group_admin' | 'chat_user' = 'chat_user';
+
+
+  // Template references
   @ViewChild('localVideo', { static: false }) localVideo!: ElementRef<HTMLVideoElement>;
   @ViewChild('remoteVideosContainer', { static: false }) remoteVideosContainer!: ElementRef<HTMLDivElement>;
 
+  // Socket connection, PeerJS instance, Local media stream, Mute state and Call active
   socket!: Socket;
   peer!: Peer;
   localStream!: MediaStream;
@@ -31,18 +36,21 @@ export class VideoChatComponent implements OnInit, OnDestroy {
 
   constructor(private cdr: ChangeDetectorRef, private router: Router) {}
 
+  // Start video call
   ngOnInit(): void {
     setTimeout(() => {
         this.autoStartCall();
     }, 0);
   }
 
+  // cleanup when component is destroyed
   ngOnDestroy(): void {
     this.cleanup();
   }
 
-  // --- Call Control Methods ---
+  // Call Control Methods
 
+  // Automatically start video call
   autoStartCall(): void {
     this.initVideoCall();
 
@@ -51,6 +59,7 @@ export class VideoChatComponent implements OnInit, OnDestroy {
     }
   }
 
+  // End call, cleans up resources and redirects based on users role
   endCall(): void {
     console.log('Ending call and cleaning up resources.');
 
@@ -59,7 +68,7 @@ export class VideoChatComponent implements OnInit, OnDestroy {
     let redirectToPath: string;
 
     switch (this.userRole) {
-        case 'admin':
+        case 'super_admin':
             redirectToPath = '/admin-dashboard';
             break;
         case 'group_admin':
@@ -71,12 +80,14 @@ export class VideoChatComponent implements OnInit, OnDestroy {
             break;
     }
 
+    // Navigate to correct page
     this.router.navigate([redirectToPath]).catch(err => {
         console.error(`Failed to navigate to ${redirectToPath}, attempting redirect to home:`, err);
         this.router.navigate(['/']);
     });
   }
 
+  // Mute state for mic
   toggleAudioMute(): void {
     if (!this.localStream) {
       console.warn('Cannot toggle mute: Local stream is not available.');
@@ -95,14 +106,17 @@ export class VideoChatComponent implements OnInit, OnDestroy {
     });
   }
 
-  // --- Internal Call Management ---
-
+  // Internal Call Management
+  // Initialize video call, sets up local media, PeerJS and sockets
   private async initVideoCall(): Promise<void> {
     this.socket = io('http://localhost:3000');
 
     try {
+
+      // Request access to camera and mic
       this.localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
 
+      // Attach local stream to video element
       if (this.localVideo) {
         this.localVideo.nativeElement.srcObject = this.localStream;
         await this.localVideo.nativeElement.play();
@@ -114,30 +128,35 @@ export class VideoChatComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Initialize PeerJS
     this.peer = new Peer({
       host: 'localhost',
       port: 3000,
       path: '/peerjs',
     });
 
+    // Listen for incoming calls
     this.peer.on('call', (call: MediaConnection) => {
-      // 🔑 LOGGING: Confirm this user is answering an incoming call
+      // LOGGING: Confirm this user is answering an incoming call
       console.log(`[PeerJS] Peer ${this.peer.id} received call from: ${call.peer}. Answering...`);
       call.answer(this.localStream);
       this.setupRemoteStreamListeners(call);
     });
 
+    // Emit peer ID to join the room
     this.peer.on('open', (id: string) => {
       console.log(`[PeerJS] Peer ID established: ${id}`);
       this.socket.emit('join-room', this.groupId, id);
     });
 
+    // Handle newly connected users
     this.socket.on('user-connected', (peerId: string) => {
-      // 🔑 LOGGING: Confirm this user knows about a new peer
+      // LOGGING: Confirm this user knows about a new peer
       console.log(`[Socket.io] New user connected: ${peerId}. Initiating outbound call...`);
       this.callNewUser(peerId, this.localStream);
     });
 
+    // Handle user disconnection
     this.socket.on('user-disconnected', (peerId: string) => {
       console.log(`[Socket.io] User disconnected: ${peerId}`);
       if (this.peers[peerId]) {
@@ -147,6 +166,7 @@ export class VideoChatComponent implements OnInit, OnDestroy {
     });
   }
 
+  // Cleanup local and remote streams, peer connections and socket
   private cleanup(): void {
     if (this.localStream) {
       this.localStream.getTracks().forEach(track => track.stop());
@@ -174,26 +194,31 @@ export class VideoChatComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
+  // Initiate call to new peer
   callNewUser(peerId: string, stream: MediaStream): void {
     const call = this.peer.call(peerId, stream);
     this.setupRemoteStreamListeners(call);
   }
 
+  // Set up listeners for remote stream events
   private setupRemoteStreamListeners(call: MediaConnection): void {
     const peerId = call.peer;
 
+    // Close any existing connections
     if (this.peers[peerId]) {
         this.peers[peerId].close();
     }
 
+    // Create new video element for remote stream
     const videoEl = document.createElement('video');
     videoEl.muted = false;
     videoEl.autoplay = true;
     videoEl.id = `video-${peerId}`;
     videoEl.classList.add('remote-stream-video');
 
+    // When remote stream arrives attach to the video element
     call.on('stream', (remoteStream: MediaStream) => {
-      // 🔑 LOGGING: Confirm the remote stream data has actually arrived
+      // LOGGING: Confirm the remote stream data has actually arrived
       console.log(`[WebRTC] Stream received successfully from: ${peerId}. Attaching to DOM.`);
       videoEl.srcObject = remoteStream;
       if (this.remoteVideosContainer?.nativeElement && !this.remoteVideosContainer.nativeElement.contains(videoEl)) {
@@ -203,6 +228,7 @@ export class VideoChatComponent implements OnInit, OnDestroy {
       }
     });
 
+    // Cleanup when remote call ends
     call.on('close', () => {
       console.log(`[WebRTC] Connection closed for: ${peerId}`);
       videoEl.remove();
@@ -210,10 +236,12 @@ export class VideoChatComponent implements OnInit, OnDestroy {
       this.cdr.detectChanges();
     });
 
+    // Handle call errors
     call.on('error', (err) => {
         console.error(`[WebRTC] Error on call from ${peerId}:`, err);
     });
 
+    // Store active call
     this.peers[peerId] = call;
   }
 }

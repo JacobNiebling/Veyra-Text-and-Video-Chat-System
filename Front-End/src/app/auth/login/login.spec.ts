@@ -10,8 +10,11 @@ describe('LoginPage', () => {
       imports: [LoginComponent]
     }).compileComponents();
 
+    // Create component instance and fixture
     fixture = TestBed.createComponent(LoginComponent);
     component = fixture.componentInstance;
+
+    // Trigger data binding
     fixture.detectChanges();
   });
 

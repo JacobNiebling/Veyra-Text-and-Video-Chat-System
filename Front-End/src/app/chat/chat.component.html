@@ -6,6 +6,7 @@
     <!-- User Info -->
     <div class="user-info">
       <img [src]="avatarUrl" alt="Avatar" class="avatar">
+      <!-- Username defaults to guest if not available -->
       <h3>{{ username || 'Guest' }}</h3>
       <button class="sign-out" (click)="signOut()">Log out</button>
     </div>
@@ -14,14 +15,16 @@
     <div class="groups">
       <h4>Groups</h4>
       <ul>
-        <li *ngFor="let group of groups"
-            [class.active]="currentGroup?._id === group._id"
-            (click)="selectGroup(group)">
+        <!-- Iterate user groups -->
+        <li *ngFor="let group of groups" [class.active]="currentGroup?._id === group._id" (click)="selectGroup(group)">
           <div class="group-item">
+            <!-- Group avatar placeholder: first letter of group name -->
             <div class="avatar">{{ group.name.charAt(0) }}</div>
             <div class="group-details">
+              <!-- Group name -->
               <span class="group-name">{{ group.name }}</span>
               <br />
+              <!-- Display admin username or 'Unknown' -->
               <small class="group-admin">
                 Admin: {{ group.createdBy?.username || 'Unknown' }}
               </small>
@@ -29,53 +32,59 @@
           </div>
         </li>
       </ul>
+      <!-- Button to refresh user's groups -->
       <button (click)="refreshUserGroups()">Refresh Groups</button>
     </div>
 
-    <!-- Channels -->
+    <!-- Channels List (shown only if a group is selected) -->
     <div class="channels" *ngIf="currentGroup">
       <h4>Channels</h4>
       <ul>
-        <li *ngFor="let ch of channels[currentGroup._id] || []"
-            [class.active]="currentChannel === ch"
-            (click)="selectChannel(ch)">
-          # {{ ch }}
+        <!-- Iterate channels for the selected group -->
+        <li *ngFor="let ch of channels[currentGroup._id] || []" [class.active]="currentChannel === ch" (click)="selectChannel(ch)"> # {{ ch }}
         </li>
       </ul>
     </div>
-
   </aside>
 
   <!-- Chat Area -->
   <main class="chat-area" *ngIf="currentGroup && currentChannel; else noChannelSelected">
     <div class="chat-header">
+      <!-- Show current group and channel -->
       <h2>{{ currentGroup.name }} / {{ currentChannel }}</h2>
+        <!-- Button to start a video call -->
         <button class="video-btn" (click)="startCall(currentGroup?._id)">Start Call</button>
     </div>
 
+    <!-- Messages container -->
     <div class="messages" #messagesContainer>
       <ng-container *ngFor="let msg of messagesView; let i = index">
         <div class="message" [class.system]="msg.system">
+          <!-- Avatar for regular messages -->
           <div class="avatar" *ngIf="!msg.system">{{ msg.sender.charAt(0) }}</div>
           <div class="message-content">
+            <!-- Message header: sender and timestamp -->
             <div class="message-header" *ngIf="!msg.system">
               <span class="sender">{{ msg.sender }}</span>
               <span class="datetime">
                 {{ msg.timestamp | date:'dd/MM/yyyy' }} {{ msg.timestamp | date:'shortTime' }}
               </span>
             </div>
+            <!-- Message text -->
             <div class="text">{{ msg.text }}</div>
+            <!-- Message image if available -->
             <img *ngIf="msg.image" [src]="msg.image" class="chat-image" />
           </div>
         </div>
       </ng-container>
     </div>
 
-
-
     <div class="message-input">
+      <!-- Input for typing new message -->
       <input [(ngModel)]="newMessage" placeholder="Type a message..." (keyup.enter)="sendMessage()" />
+      <!-- File upload input -->
       <input type="file" (change)="onFileSelected($event)" />
+      <!-- Send button -->
       <button (click)="sendMessage()">Send</button>
     </div>
   </main>
@@ -86,5 +95,4 @@
       <h3>Select a group and channel to start chatting</h3>
     </main>
   </ng-template>
-
 </div>

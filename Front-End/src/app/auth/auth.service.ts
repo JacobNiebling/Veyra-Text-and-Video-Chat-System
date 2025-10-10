@@ -10,14 +10,17 @@ export class AuthService {
 
   constructor(private http: HttpClient) {}
 
+  // Send user to /register
   register(email: string, password: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/register`, { email, password });
   }
 
+  // Send user to /login
   login(email: string, password: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/login`, { email, password });
   }
 
+  // Save token
   saveToken(token: string) {
     localStorage.setItem('token', token);
   }

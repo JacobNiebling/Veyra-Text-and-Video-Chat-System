@@ -4,7 +4,7 @@
   font-family: 'Segoe UI', 'Roboto', sans-serif;
   background-color: #f5f5f5;
 
-  /* Sidebar */
+  // Sidebar
 .sidebar {
   width: 260px;
   background-color: #ffffff;
@@ -29,24 +29,25 @@
     margin: 0;
   }
 
-  // --- User Info Styling (Updated to match the target layout) ---
+  // User Info Styling
   .user-info {
-    text-align: center; // Center content as avatar is main feature
+    text-align: center;
     display: flex;
-    flex-direction: column; // Stack items vertically
+    flex-direction: column;
     align-items: center;
     gap: 10px;
     margin-bottom: 25px;
     padding: 10px 0;
-    border-bottom: 1px solid #f0f0f0; // Visual separator
+    border-bottom: 1px solid #f0f0f0;
 
+      // Style for user image avatar
     .avatar {
       width: 60px;
       height: 60px;
       border-radius: 50%;
       object-fit: cover;
       margin-bottom: 5px;
-      // Style for user image avatar
+
     }
 
     h3 {
@@ -55,18 +56,17 @@
       color: #222;
     }
 
-    // Sign out button is moved into .user-info now
     .sign-out {
       padding: 8px 18px;
       border-radius: 20px;
       border: none;
-      background-color: #3f51b5; // Blue-ish tone from the second example
+      background-color: #3f51b5;
       color: #fff;
       cursor: pointer;
       transition: 0.2s;
-      margin-top: 5px; // Space it out from username
+      margin-top: 5px;
       font-weight: 500;
-      width: 100%; // Make it full width of the parent container
+      width: 100%;
 
       &:hover {
         background-color: #303f9f;
@@ -74,7 +74,7 @@
     }
   }
 
-  // --- Groups Styling (New structure: simple list) ---
+  // Groups Styling
   .groups {
     // Replaces .groups-tabs
     padding: 10px 0;
@@ -113,7 +113,7 @@
           width: 35px;
           height: 35px;
           border-radius: 50%;
-          background-color: #4CAF50; // Example color
+          background-color: #4CAF50;
           color: white;
           display: flex;
           justify-content: center;
@@ -140,12 +140,12 @@
       }
     }
 
-    // Add Group functionality styles (retained/adapted)
+    // Add Group functionality styles
     .add-group {
       display: flex;
       gap: 5px;
       margin-top: 15px;
-      padding: 0 5px; // Reduced padding to match the general flow
+      padding: 0 5px;
 
       input {
         flex: 1;
@@ -169,7 +169,7 @@
       }
     }
 
-    // Refresh Button (Added for completeness)
+    // Refresh Button
     > button {
         width: 100%;
         margin-top: 10px;
@@ -187,12 +187,12 @@
     }
   }
 
-  // --- Channels Styling (New separate block) ---
+  // Channels Styling
   .channels {
     padding: 15px 0 10px;
-    border-top: 1px solid #f0f0f0; // Visual separator
-    flex: 1; // Allow channels section to take up remaining space
-    overflow-y: auto; // Allow scrolling for channels if needed
+    border-top: 1px solid #f0f0f0;
+    flex: 1;
+    overflow-y: auto;
 
     .channels-list {
       display: flex;
@@ -217,7 +217,7 @@
       }
     }
 
-    // Add Channel functionality styles (retained/adapted)
+    // Add Channel functionality styles
     .add-channel {
       display: flex;
       flex-direction: column;
@@ -247,7 +247,7 @@
     }
   }
 
-  // --- User Management Section ---
+  // User Management Section
   .group-management {
       padding: 15px 5px 0;
       border-top: 1px solid #f0f0f0;
@@ -294,9 +294,6 @@
           }
       }
   }
-
-  // NOTE: The .sidebar-footer and its .sign-out button are removed from the bottom
-  // as the sign-out button is now within .user-info.
 }
     .user-info {
       display: flex;
@@ -307,8 +304,8 @@
         width: 40px;
         height: 40px;
         border-radius: 50%;
-        object-fit: cover; // ensures image fits the circle
-        border: 2px solid #ccc; // optional border
+        object-fit: cover;
+        border: 2px solid #ccc;
       }
 
       .username {
@@ -395,7 +392,7 @@
     }
   }
 
-  /* Chat Area */
+  // Chat Area
   .chat-area {
     flex: 1;
     display: flex;
@@ -530,7 +527,7 @@
     }
   }
 
-  /* Login Overlay */
+  // Login Overlay
   .login-overlay {
     position: fixed;
     top: 0;
@@ -573,7 +570,7 @@
     }
   }
 
-/* Slide-in animation for messages */
+// Slide-in animation for messages
 @keyframes slideIn {
   to {
     opacity: 1;

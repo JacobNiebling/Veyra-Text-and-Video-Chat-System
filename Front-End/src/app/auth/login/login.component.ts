@@ -12,15 +12,21 @@ import { HttpClientModule, HttpClient } from '@angular/common/http';
   styleUrls: ['./login.component.scss'],
 })
 export class LoginComponent {
+
+  // Object bound to the form inputs via ngModel
   loginData = { email: '', password: '' };
+
+  // Error messages display in template
   errorMessage = '';
 
+  // Base URL for backend API
   private readonly API_BASE_URL = 'http://localhost:3000/api';
 
   constructor(private http: HttpClient, private router: Router) {}
 
+  // Called when form in submitted
   onSubmit() {
-    // POST login data
+    //login POST request is sent to backen
     this.http.post<any>(`${this.API_BASE_URL}/login`, this.loginData).subscribe({
       next: (res) => {
         console.log('Login response:', res);

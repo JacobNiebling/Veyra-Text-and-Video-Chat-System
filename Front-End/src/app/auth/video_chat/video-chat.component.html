@@ -1,36 +1,24 @@
 <div class="video-chat-wrapper">
-
   <ng-container>
 
+    <!-- Local video box: Displays user's own webcam -->
     <div class="local-video-box">
       <video #localVideo muted autoplay class="local-stream-video"></video>
     </div>
 
     <hr>
-
+    <!-- Section for showing all active participants -->
     <h3>Active Participants (Room: {{ groupId }})</h3>
-
+    <!-- Container where remote video streams will be dynamically added -->
     <div #remoteVideosContainer class="remote-videos-grid">
     </div>
 
   </ng-container>
-
-
+ <!-- Bottom control bar for call actions -->
   <div class="main-control-bar">
-
-    <button
-      (click)="toggleAudioMute()"
-      [class.is-muted]="isMuted"
-      class="action-button">
-      {{ isMuted ? 'Unmute' : 'Mute' }}
-    </button>
-
-    <button
-      (click)="endCall()"
-      class="action-button hangup-button">
-      End Call
-    </button>
-
+    <!-- Mute/Unmute button -->
+    <button (click)="toggleAudioMute()" [class.is-muted]="isMuted" class="action-button"> {{ isMuted ? 'Unmute' : 'Mute' }} </button>
+    <!-- End call button -->
+    <button (click)="endCall()" class="action-button hangup-button">End Call</button>
   </div>
-
 </div>

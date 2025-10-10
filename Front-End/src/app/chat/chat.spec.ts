@@ -10,9 +10,11 @@ describe('ChatComponent', () => {
     await TestBed.configureTestingModule({
       imports: [ChatComponent] // since it's standalone
     }).compileComponents();
-
+    // Create component instance and fixture
     fixture = TestBed.createComponent(ChatComponent);
     component = fixture.componentInstance;
+
+    // Trigger data binding
     fixture.detectChanges();
   });
 

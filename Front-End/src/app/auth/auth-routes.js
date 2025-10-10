@@ -8,18 +8,22 @@ const router = express.Router();
 router.post('/register', async (req, res) => {
   const { username, email, password } = req.body;
 
+  // Check if fields are populated, if not throw 400 error
   if (!username || !email || !password) {
     return res.status(400).json({ success: false, error: 'All fields are required' });
   }
 
   try {
+    // Check if user already exists and if it does throw 400 error
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ success: false, error: 'Email already registered' });
     }
 
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // New user class
     const newUser = new User({
       username,
       email,
@@ -28,6 +32,7 @@ router.post('/register', async (req, res) => {
       groups: []
     });
 
+    // Save new user
     await newUser.save();
 
     res.json({ success: true, user: { id: newUser._id, username: newUser.username, email: newUser.email } });

@@ -12,6 +12,8 @@ describe('AuthService', () => {
     expect(service).toBeTruthy();
   });
 
+
+  // Fake mock data
   it('should return token on login', (done) => {
     service.login('test@test.com', '123456').subscribe(res => {
       expect(res.token).toBe('fake-jwt-token');

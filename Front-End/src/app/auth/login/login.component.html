@@ -6,7 +6,7 @@
 
     <h2>Welcome Back</h2>
     <p class="subtitle">Log in to access your chats and video calls</p>
-
+    <!-- Angular template forms email is two-way bound to loginData.email and Password is two-way bound to loginData.password -->
     <form (ngSubmit)="onSubmit()" #loginForm="ngForm">
       <input type="email" placeholder="Email" name="email" [(ngModel)]="loginData.email" required>
       <input type="password" placeholder="Password" name="password" [(ngModel)]="loginData.password" required>
