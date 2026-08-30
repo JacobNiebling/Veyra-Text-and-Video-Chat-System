@@ -1,4 +1,4 @@
-# 3813ICT_VideoChatSystem
+# Veyra Text and Video-Chat System
 
 ## Table of Contents
 1. [Project Overview](#project-overview)
@@ -16,7 +16,7 @@ This project implements a **text and video chat system** with real-time messagin
 - Communicate in **groups and channels**
 - Use text chat and video chat
 - Have different **permission levels** (Admin, Moderator, User)
-- Git Repo: https://github.com/JacobNiebling/3813ICT_VideoChatSystem
+- Git Repo: https://github.com/JacobNiebling/Veyra-Text-and-Video-Chat-System
 
 The frontend is implemented using **Angular** and the backend uses **Node.js with Express**. **Sockets.io** is used for real-time communication
 
